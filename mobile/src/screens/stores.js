@@ -1,5 +1,5 @@
 // Listado de todas las tiendas con buscador general y filtros.
-import { escapeHtml, formatRelative, normalize } from "../lib/format.js";
+import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
 import { go } from "../router.js";
 import { loadStores, state } from "../state.js";
@@ -36,6 +36,11 @@ function filtered() {
 function storeItem(s) {
   const done = s.changeCount > 0;
   const sub = [s.code, s.address].filter(Boolean).map(escapeHtml).join(" · ");
+  // Coordenada vigente: la del último registro (o la de la carga inicial si nunca se registró).
+  const coords =
+    s.latitude != null
+      ? `<span class="coords">${icon("i-pin", "ic xs")}${formatCoords(s.latitude, s.longitude, 5)}</span>`
+      : `<span class="coords none">${icon("i-pin-off", "ic xs")}Sin coordenada</span>`;
   const trail = done
     ? `<span class="badge" title="Cambios de ubicación">${icon("i-pin", "ic xs")}${s.changeCount}</span>` +
       `<span class="when">${escapeHtml(formatRelative(s.locationUpdatedAt))}</span>`
@@ -43,7 +48,7 @@ function storeItem(s) {
   return (
     `<li><button class="store-item" type="button" data-id="${s.id}">` +
     `<span class="lead ${done ? "" : "pending"}">${icon("i-store")}</span>` +
-    `<span class="txt"><span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span></span>` +
+    `<span class="txt"><span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span>${coords}</span>` +
     `<span class="trail">${trail}</span></button></li>`
   );
 }

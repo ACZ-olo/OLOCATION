@@ -438,6 +438,16 @@ button, input { font-family: inherit; }
   -webkit-box-orient: vertical;
 }
 .store-item .sub { font-size: 0.85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-item .coords {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.store-item .coords.none { color: var(--muted); font-style: italic; }
 .trail { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .badge {
   display: inline-flex;
