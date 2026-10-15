@@ -43,9 +43,20 @@ function showScreen(id) {
 // --- Mapa -----------------------------------------------------------------
 let map;
 let tileLayer;
+// Pin con los colores de OLO: gota verde con el cuadro del logo en el centro.
+const PIN_ICON = L.divIcon({
+  className: "olo-pin",
+  html:
+    '<svg width="36" height="46" viewBox="0 0 36 46" aria-hidden="true">' +
+    '<path d="M18 45S2 28.5 2 17a16 16 0 0 1 32 0c0 11.5-16 28-16 28Z" fill="#00a785" stroke="#fff" stroke-width="3"/>' +
+    '<rect x="11" y="10" width="14" height="14" rx="2" fill="#251e1f"/></svg>',
+  iconSize: [36, 46],
+  iconAnchor: [18, 45],
+});
+
 function initMap() {
   if (map) return;
-  map = L.map("map", { zoomControl: true }).setView([9.9325, -84.0796], 8);
+  map = L.map("map", { zoomControl: false }).setView([9.9325, -84.0796], 8);
   tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -110,6 +121,7 @@ function loadSession() {
 el("toggleDatos").addEventListener("click", () => {
   const box = el("datosExtra");
   box.hidden = !box.hidden;
+  el("toggleDatos").setAttribute("aria-expanded", String(!box.hidden));
   el("toggleDatos").textContent = box.hidden
     ? "Actualizar mis datos (opcional)"
     : "Ocultar datos";
@@ -177,7 +189,10 @@ el("logoutBtn").addEventListener("click", () => {
 // ======================= Pantalla 2: Clientes =======================
 function goToClients() {
   const c = state.carrier;
-  el("carrierNameLabel").textContent = c ? `${c.name} · ${c.plate}` : "";
+  el("carrierNameLabel").textContent = c ? c.name : "";
+  el("carrierPlateLabel").textContent = c ? c.plate : "";
+  el("carrierAvatar").textContent = c ? initials(c.name) : "";
+  el("clientSearch").value = "";
   showScreen("screenClients");
   loadClients();
 }
@@ -202,18 +217,45 @@ async function loadClients() {
   }
 }
 
+// Iniciales del nombre para el avatar ("Carlos Jiménez Rojas" → "CJ").
+function initials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+}
+
+// Ícono del sprite de index.html (<symbol id="i-...">).
+const icon = (id, cls = "ic") => `<svg class="${cls}"><use href="#${id}"/></svg>`;
+
 function renderClients(items) {
+  const query = el("clientSearch").value.trim().toLowerCase();
+  const shown = query
+    ? items.filter((c) => `${c.name} ${c.code}`.toLowerCase().includes(query))
+    : items;
+  el("clientsCount").textContent = items.length
+    ? query
+      ? `${shown.length} de ${items.length} clientes`
+      : `${items.length} cliente(s) asignado(s)`
+    : "";
   const ul = el("clients");
   ul.innerHTML = "";
-  for (const c of items) {
+  for (const c of shown) {
     const li = document.createElement("li");
     li.innerHTML =
-      `<span><strong>${escapeHtml(c.name)}</strong><br><span class="code">${escapeHtml(c.code)}</span></span>` +
-      `<span class="chev">›</span>`;
+      `<span class="lead">${icon("i-store")}</span>` +
+      `<span class="txt"><span class="name">${escapeHtml(c.name)}</span>` +
+      `<span class="code">${escapeHtml(c.code)}</span></span>` +
+      `<span class="chev">${icon("i-chev")}</span>`;
     li.addEventListener("click", () => goToMap(c));
     ul.appendChild(li);
   }
+  if (query && !shown.length) {
+    ul.innerHTML = `<li class="empty" aria-disabled="true">Ningún cliente coincide con “${escapeHtml(query)}”.</li>`;
+  }
 }
+
+el("clientSearch").addEventListener("input", () => {
+  if (state.clients) renderClients(state.clients);
+});
 
 // ======================= Pantalla: Registros =======================
 el("recordsBtn").addEventListener("click", () => goToRecords());
@@ -293,11 +335,12 @@ function renderRecords(records) {
       const card = document.createElement("div");
       card.className = "record";
       card.innerHTML =
+        `<span class="lead">${icon("i-pin")}</span><div class="body">` +
         `<div class="record-top">` +
-        `<span class="record-label">${escapeHtml(r.label || "(sin etiqueta)")}</span>` +
+        `<span class="record-label${r.label ? "" : " none"}">${escapeHtml(r.label || "Sin etiqueta")}</span>` +
         `<span class="record-date">${escapeHtml(fecha)}</span></div>` +
         `<div class="record-sub">${escapeHtml(r.clientName)} · ${escapeHtml(r.clientCode)}</div>` +
-        `<div class="record-coords">${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}</div>`;
+        `<div class="record-coords">${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}</div></div>`;
       section.appendChild(card);
     }
     container.appendChild(section);
@@ -308,7 +351,8 @@ function renderRecords(records) {
 function goToMap(client) {
   state.client = client;
   state.picked = null;
-  el("mapTitle").textContent = `Ubicación · ${client.name}`;
+  el("mapTitle").textContent = client.name;
+  setHint("Tocá el mapa o usá el GPS para marcar el punto");
   el("toReviewBtn").disabled = true;
   showScreen("screenMap");
   if (state.marker) { map.removeLayer(state.marker); state.marker = null; }
@@ -316,35 +360,51 @@ function goToMap(client) {
 
 el("mapBack").addEventListener("click", () => goToClients());
 
+// Texto de la hoja inferior del mapa. kind: "" (ayuda), "set" (punto marcado) o "error".
+function setHint(text, kind = "") {
+  el("mapHint").textContent = text;
+  el("mapHint").className = "sheet-text" + (kind ? " " + kind : "");
+}
+
+function showPickedHint(lat, lng) {
+  setHint(`${lat.toFixed(6)}, ${lng.toFixed(6)} · podés arrastrar el pin`, "set");
+}
+
 function setPickedPoint(lat, lng) {
   state.picked = { lat, lng };
   const latLng = [lat, lng];
   if (state.marker) {
     state.marker.setLatLng(latLng);
   } else {
-    state.marker = L.marker(latLng, { draggable: true }).addTo(map);
+    state.marker = L.marker(latLng, { draggable: true, icon: PIN_ICON }).addTo(map);
     state.marker.on("dragend", () => {
       const p = state.marker.getLatLng();
       state.picked = { lat: p.lat, lng: p.lng };
+      showPickedHint(p.lat, p.lng);
     });
   }
-  el("mapHint").textContent = `Punto: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  showPickedHint(lat, lng);
   el("toReviewBtn").disabled = false;
 }
 
 el("gpsBtn").addEventListener("click", () => {
   if (!navigator.geolocation) {
-    el("mapHint").textContent = "Este navegador no soporta geolocalización.";
+    setHint("Este navegador no soporta geolocalización.", "error");
     return;
   }
-  el("mapHint").textContent = "Obteniendo GPS…";
+  const btn = el("gpsBtn");
+  btn.classList.add("busy");
+  btn.disabled = true;
+  setHint("Obteniendo tu ubicación…");
+  const done = () => { btn.classList.remove("busy"); btn.disabled = false; };
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      done();
       const { latitude, longitude } = pos.coords;
       setPickedPoint(latitude, longitude);
-      map.setView([latitude, longitude], 16);
+      map.setView([latitude, longitude], 17);
     },
-    (err) => { el("mapHint").textContent = `No se pudo obtener el GPS: ${err.message}`; },
+    (err) => { done(); setHint(`No se pudo obtener el GPS: ${err.message}`, "error"); },
     { enableHighAccuracy: true, timeout: 10000 }
   );
 });
@@ -360,12 +420,30 @@ function goToReview() {
   el("reviewLat").textContent = state.picked.lat.toFixed(6);
   el("reviewLng").textContent = state.picked.lng.toFixed(6);
   el("labelInput").value = "";
+  syncChips();
   setMsg("labelMsg", "");
   el("reviewSave").disabled = false;
   showScreen("screenReview");
 }
 
 el("reviewBack").addEventListener("click", () => showScreen("screenMap"));
+
+// Chips de etiqueta sugerida: tocar uno lo escribe en el campo (tocarlo de nuevo lo borra).
+function syncChips() {
+  const value = el("labelInput").value.trim();
+  for (const chip of el("labelChips").querySelectorAll(".chip")) {
+    chip.classList.toggle("on", chip.textContent === value);
+  }
+}
+
+el("labelChips").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".chip");
+  if (!chip) return;
+  const input = el("labelInput");
+  input.value = input.value.trim() === chip.textContent ? "" : chip.textContent;
+  syncChips();
+});
+el("labelInput").addEventListener("input", syncChips);
 
 // Descartar: tira la selección y vuelve a la lista de clientes. No envía nada.
 el("reviewDiscard").addEventListener("click", () => {
