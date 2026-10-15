@@ -8,6 +8,8 @@ Columnas (con encabezado; separador "," o ";"):
     address    opcional (dirección o zona; también se usa en el buscador)
     latitude   opcional  ┐ coordenada que se tiene hoy (aunque esté mal).
     longitude  opcional  ┘ Las dos o ninguna.
+    change_count, location_updated_at   se ignoran (vienen en el CSV que descarga la app,
+                                        así ese archivo se puede volver a importar tal cual)
 
 Es idempotente:
 - una tienda con el mismo `code` se actualiza (nombre y dirección); si no existe, se crea;
@@ -25,6 +27,8 @@ from app.db import connect, migrate
 
 REQUIRED = ("code", "name")
 KNOWN = ("code", "name", "address", "latitude", "longitude")
+# Columnas que agrega el CSV que descarga la app; se aceptan y se ignoran al importar.
+IGNORED = ("change_count", "location_updated_at")
 
 
 def _coordinate(raw: str, low: float, high: float, field: str, line: int) -> float | None:
@@ -50,7 +54,7 @@ def read_rows(path: Path) -> list[dict]:
     headers = [h.strip().lower() for h in reader.fieldnames or []]
     if missing := [h for h in REQUIRED if h not in headers]:
         raise ValueError(f"faltan columnas obligatorias: {', '.join(missing)}")
-    if unknown := [h for h in headers if h and h not in KNOWN]:
+    if unknown := [h for h in headers if h and h not in KNOWN + IGNORED]:
         raise ValueError(f"columnas desconocidas: {', '.join(unknown)} (válidas: {', '.join(KNOWN)})")
 
     rows, seen = [], set()

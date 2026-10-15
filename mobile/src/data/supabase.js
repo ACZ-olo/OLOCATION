@@ -31,6 +31,7 @@ const KNOWN_CODES = [
   "INVALID_PASSWORD",
   "TOO_MANY_ATTEMPTS",
   "STORE_NOT_FOUND",
+  "CHANGE_NOT_FOUND",
   "VALIDATION_ERROR",
 ];
 
@@ -106,4 +107,21 @@ export async function registerLocation(token, storeId, { latitude, longitude, so
     p_accuracy_m: accuracyM ?? null,
   });
   return { store: toStore(data.store), change: toChange(data.change) };
+}
+
+export async function exportBackup(token) {
+  return rpc("export_backup", { p_token: token });
+}
+
+export async function restoreBackup(token, backup) {
+  return rpc("restore_backup", { p_token: token, p_backup: backup });
+}
+
+export async function deleteLocationChange(token, storeId, changeId) {
+  const data = await rpc("delete_store_location_change", {
+    p_token: token,
+    p_store_id: storeId,
+    p_change_id: changeId,
+  });
+  return { store: toStore(data.store) };
 }

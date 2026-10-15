@@ -561,6 +561,8 @@ button, input { font-family: inherit; }
   font-variant-numeric: tabular-nums;
 }
 .change.latest .change-num { background: var(--brand); color: #fff; }
+.change-delete { align-self: center; margin-right: -8px; color: var(--muted); }
+.change-delete:active { background: var(--danger-container); color: var(--danger); }
 .change-body {
   flex: 1;
   min-width: 0;
@@ -598,9 +600,55 @@ button, input { font-family: inherit; }
   box-shadow: var(--shadow-up);
 }
 
+/* ---- Navegación inferior (Tiendas / Respaldo) ---- */
+.bottom-nav {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  background: var(--surface);
+  box-shadow: var(--shadow-up);
+  padding: 8px 8px calc(8px + var(--safe-bottom));
+}
+.nav-item {
+  flex: 1;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.nav-pill {
+  width: 64px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.nav-item.active { color: var(--text); }
+.nav-item.active .nav-pill { background: var(--primary-container); color: var(--on-primary-container); }
+
+/* ---- Respaldo ---- */
+.action-card { display: flex; gap: 14px; align-items: flex-start; }
+.action-txt { flex: 1; min-width: 0; }
+.action-txt h2 { margin: 2px 0 4px; font-size: 1.1rem; }
+.action-txt p { margin: 0 0 14px; color: var(--muted); font-size: 0.92rem; }
+.action-txt p strong { color: var(--text); }
+.lead.danger { background: var(--danger-container); color: var(--danger); }
+.warn-inline { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); font-weight: 500; }
+.dialog-body .warn { color: var(--danger); }
+
 /* ---- Mapa para registrar ---- */
 .map-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
 .map { width: 100%; height: 100%; background: var(--surface-2); }
+#locateMap { cursor: default; } /* mapa fijo: solo muestra la ubicación actual */
 .map-wrap .leaflet-bottom { bottom: 20px; } /* atribución de OSM visible sobre la hoja inferior */
 .leaflet-control-attribution { font-size: 10px; }
 .map-legend {

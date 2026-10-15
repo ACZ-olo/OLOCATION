@@ -1,4 +1,5 @@
-// Registrar la ubicación de una tienda: con el GPS (ubicación actual) o tocando el mapa.
+// Registrar la ubicación de una tienda: SOLO con la ubicación actual del teléfono (GPS).
+// El mapa es de referencia: no se puede mover, hacer zoom ni elegir un punto.
 import L from "leaflet";
 import { DEFAULT_CENTER, GPS_LOW_ACCURACY_M } from "../config.js";
 import { registerLocation } from "../data/index.js";
@@ -11,23 +12,30 @@ import { back } from "../router.js";
 import { findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
+const GPS_ZOOM = 18;
+
 let map;
 let currentMarker = null; // coordenada que la tienda tiene hoy (gris)
-let pickedMarker = null; // punto nuevo (verde, se puede arrastrar)
+let gpsMarker = null; // ubicación actual del teléfono (verde)
 let accuracyCircle = null;
 let gps = null; // búsqueda de GPS en curso
 let store = null;
-let picked = null; // { latitude, longitude, source: "gps"|"map", accuracyM }
+let picked = null; // { latitude, longitude, source: "gps", accuracyM }
 let saving = false;
 
 function ensureMap() {
   if (map) return;
-  map = L.map("locateMap", { zoomControl: false }).setView(DEFAULT_CENTER, 8);
+  // Mapa fijo: sin arrastrar, sin zoom y sin tocar para elegir.
+  map = L.map("locateMap", {
+    zoomControl: false,
+    dragging: false,
+    touchZoom: false,
+    doubleClickZoom: false,
+    scrollWheelZoom: false,
+    boxZoom: false,
+    keyboard: false,
+  }).setView(DEFAULT_CENTER, 8);
   tileLayer().addTo(map);
-  map.on("click", (e) => {
-    cancelGps();
-    pick({ latitude: e.latlng.lat, longitude: e.latlng.lng, source: "map", accuracyM: null });
-  });
 }
 
 function setSheet({ iconId, title, detail, tone = "" }) {
@@ -37,18 +45,11 @@ function setSheet({ iconId, title, detail, tone = "" }) {
   $("locateDetail").innerHTML = detail;
 }
 
-function resetSheet() {
-  setSheet({
-    iconId: "i-tap",
-    title: "Elegí cómo registrar la ubicación",
-    detail: "Usá tu ubicación actual o tocá el mapa en el punto exacto de la tienda.",
-  });
-}
-
 function setGpsButton(busy) {
   const btn = $("useGps");
   btn.classList.toggle("busy", busy);
-  btn.querySelector("span").textContent = busy ? "Cancelar" : "Mi ubicación";
+  btn.disabled = busy;
+  btn.querySelector("span").textContent = busy ? "Midiendo…" : "Volver a medir";
 }
 
 function cancelGps() {
@@ -58,42 +59,30 @@ function cancelGps() {
   setGpsButton(false);
 }
 
-function clearPicked() {
+function clearPosition() {
   picked = null;
-  if (pickedMarker) pickedMarker.remove();
+  if (gpsMarker) gpsMarker.remove();
   if (accuracyCircle) accuracyCircle.remove();
-  pickedMarker = accuracyCircle = null;
+  gpsMarker = accuracyCircle = null;
   $("saveLocation").disabled = true;
   $("mapLegend").hidden = true;
 }
 
-function showAccuracy(p) {
-  if (p.accuracyM == null) {
-    if (accuracyCircle) accuracyCircle.remove();
-    accuracyCircle = null;
-    return;
-  }
+/** Muestra la posición del GPS en el mapa (centrada) y la deja lista para guardar. */
+function showPosition(p) {
+  picked = { latitude: p.latitude, longitude: p.longitude, source: "gps", accuracyM: p.accuracy };
   const latLng = [p.latitude, p.longitude];
-  if (accuracyCircle) accuracyCircle.setLatLng(latLng).setRadius(p.accuracyM);
+  if (gpsMarker) gpsMarker.setLatLng(latLng);
+  else gpsMarker = L.marker(latLng, { icon: newPin(), interactive: false, zIndexOffset: 1000 }).addTo(map);
+  if (accuracyCircle) accuracyCircle.setLatLng(latLng).setRadius(p.accuracy);
   else
-    accuracyCircle = L.circle(latLng, {
-      radius: p.accuracyM,
-      className: "accuracy-circle",
-      interactive: false,
-    }).addTo(map);
+    accuracyCircle = L.circle(latLng, { radius: p.accuracy, className: "accuracy-circle", interactive: false }).addTo(map);
+  map.setView(latLng, GPS_ZOOM, { animate: false });
+  $("mapLegend").hidden = !currentMarker;
 }
 
-function describePicked() {
+function describePosition() {
   const coords = formatCoords(picked.latitude, picked.longitude);
-  if (picked.source === "map") {
-    setSheet({
-      iconId: "i-tap",
-      title: "Punto elegido en el mapa",
-      detail: `${coords}<br><span class="muted">Podés arrastrar el pin para ajustarlo.</span>`,
-      tone: "ok",
-    });
-    return;
-  }
   const low = picked.accuracyM > GPS_LOW_ACCURACY_M;
   setSheet({
     iconId: "i-gps",
@@ -101,43 +90,20 @@ function describePicked() {
     detail:
       `${coords} · <strong>${escapeHtml(formatAccuracy(picked.accuracyM))}</strong>` +
       (low
-        ? `<br><span class="warn">Probá de nuevo al aire libre o ajustá el pin en el mapa.</span>`
-        : `<br><span class="muted">Podés arrastrar el pin para ajustarlo.</span>`),
+        ? `<br><span class="warn">Salí al aire libre, esperá unos segundos y tocá “Volver a medir”.</span>`
+        : `<br><span class="muted">Si no estás en la tienda, acercate y volvé a medir.</span>`),
     tone: low ? "warn" : "ok",
   });
 }
 
-function pick(p, { center = false } = {}) {
-  picked = p;
-  const latLng = [p.latitude, p.longitude];
-  if (pickedMarker) pickedMarker.setLatLng(latLng);
-  else {
-    pickedMarker = L.marker(latLng, { icon: newPin(), draggable: true, zIndexOffset: 1000 }).addTo(map);
-    pickedMarker.on("dragend", () => {
-      cancelGps();
-      const ll = pickedMarker.getLatLng();
-      pick({ latitude: ll.lat, longitude: ll.lng, source: "map", accuracyM: null });
-    });
-  }
-  showAccuracy(p);
-  if (center) map.setView(latLng, Math.max(map.getZoom(), 18));
-  $("saveLocation").disabled = saving;
-  $("mapLegend").hidden = !currentMarker;
-  describePicked();
-}
-
-$("useGps").addEventListener("click", () => {
-  if (gps) {
-    cancelGps();
-    if (!picked) resetSheet();
-    else describePicked();
-    return;
-  }
+function measure() {
+  cancelGps();
+  clearPosition();
   setGpsButton(true);
   setSheet({ iconId: "i-gps", title: "Buscando señal GPS…", detail: "Quedate quieto unos segundos.", tone: "busy" });
   const run = locateBest((p) => {
     if (gps !== run) return;
-    pick({ latitude: p.latitude, longitude: p.longitude, source: "gps", accuracyM: p.accuracy }, { center: true });
+    showPosition(p);
     setSheet({
       iconId: "i-gps",
       title: "Afinando la precisión…",
@@ -151,27 +117,30 @@ $("useGps").addEventListener("click", () => {
       if (gps !== run) return;
       gps = null;
       setGpsButton(false);
-      pick({ latitude: p.latitude, longitude: p.longitude, source: "gps", accuracyM: p.accuracy }, { center: true });
+      showPosition(p);
+      describePosition();
+      $("saveLocation").disabled = saving;
     })
     .catch((e) => {
       if (gps !== run) return;
       gps = null;
       setGpsButton(false);
-      setSheet({ iconId: "i-pin-off", title: "No se pudo usar el GPS", detail: escapeHtml(e.message), tone: "error" });
+      clearPosition();
+      setSheet({ iconId: "i-pin-off", title: "No se pudo obtener tu ubicación", detail: escapeHtml(e.message), tone: "error" });
     });
-});
+}
+
+$("useGps").addEventListener("click", measure);
 
 $("saveLocation").addEventListener("click", async () => {
   if (!picked || !store || saving) return;
-  cancelGps();
   const p = picked;
   const next = store.changeCount + 1;
-  const how =
-    p.source === "gps" ? `tu ubicación actual (GPS ${escapeHtml(formatAccuracy(p.accuracyM))})` : "el punto elegido en el mapa";
   const ok = await confirmDialog({
     title: "¿Guardar esta ubicación?",
     body:
-      `<p><strong>${escapeHtml(store.name)}</strong> quedará en ${how}:</p>` +
+      `<p><strong>${escapeHtml(store.name)}</strong> quedará en tu ubicación actual ` +
+      `(GPS ${escapeHtml(formatAccuracy(p.accuracyM))}):</p>` +
       `<p class="dialog-coords">${formatCoords(p.latitude, p.longitude)}</p>` +
       `<p class="muted">${store.latitude != null ? "Reemplaza la coordenada actual. " : ""}Será el cambio n.º ${next} de esta tienda.</p>`,
     accept: "Guardar",
@@ -201,8 +170,8 @@ export const locateScreen = {
   parent: ({ id }) => `/tiendas/${id}`,
   async enter({ id }) {
     ensureMap();
-    clearPicked();
-    resetSheet();
+    cancelGps();
+    clearPosition();
     setTimeout(() => map.invalidateSize(), 50);
 
     store = findStore(id);
@@ -220,7 +189,6 @@ export const locateScreen = {
       $("useGps").disabled = true;
       return;
     }
-    $("useGps").disabled = false;
     $("locateTitle").textContent = store.name;
 
     if (currentMarker) currentMarker.remove();
@@ -232,6 +200,7 @@ export const locateScreen = {
     } else {
       map.setView(DEFAULT_CENTER, 8, { animate: false });
     }
+    measure(); // la única forma de registrar: arranca el GPS al entrar
   },
   leave() {
     cancelGps();

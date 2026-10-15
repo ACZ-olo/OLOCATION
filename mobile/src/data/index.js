@@ -7,6 +7,10 @@
  *   listLocationChanges(token, storeId) → LocationChange[]   (más reciente primero)
  *   registerLocation(token, storeId, { latitude, longitude, source, accuracyM })
  *                                       → { store: Store, change: LocationChange }
+ *   deleteLocationChange(token, storeId, changeId)
+ *                                       → { store: Store }   (tienda ya actualizada)
+ *   exportBackup(token)                 → Backup (objeto JSON, ver docs/API_CONTRACT.md)
+ *   restoreBackup(token, backup)        → { stores, changes }   (REEMPLAZA todos los datos)
  *
  * Store          { id, code, name, address, latitude, longitude, locationUpdatedAt, changeCount }
  * LocationChange { id, storeId, latitude, longitude, accuracyM, source: "gps"|"map",
@@ -39,5 +43,9 @@ export const listLocationChanges = async (token, storeId) =>
   (await provider()).listLocationChanges(token, storeId);
 export const registerLocation = async (token, storeId, location) =>
   (await provider()).registerLocation(token, storeId, location);
+export const deleteLocationChange = async (token, storeId, changeId) =>
+  (await provider()).deleteLocationChange(token, storeId, changeId);
+export const exportBackup = async (token) => (await provider()).exportBackup(token);
+export const restoreBackup = async (token, backup) => (await provider()).restoreBackup(token, backup);
 
 export { DataError };

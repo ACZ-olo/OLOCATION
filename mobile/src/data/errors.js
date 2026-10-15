@@ -4,6 +4,7 @@
  *   INVALID_PASSWORD    contraseña incorrecta
  *   TOO_MANY_ATTEMPTS   demasiados intentos fallidos
  *   STORE_NOT_FOUND     la tienda no existe
+ *   CHANGE_NOT_FOUND    el registro de ubicación no existe (p. ej. ya lo borró otra persona)
  *   VALIDATION_ERROR    datos inválidos
  *   NETWORK             sin conexión con el servidor
  *   NOT_CONFIGURED      falta configuración (contraseña en el servidor, claves de Supabase…)

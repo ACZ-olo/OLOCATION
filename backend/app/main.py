@@ -13,10 +13,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app import config, repository, security
 from app.db import connect, get_connection, migrate
 from app.schemas import (
+    BACKUP_FORMAT,
+    BACKUP_VERSION,
     AccessRequest,
     AccessResponse,
+    Backup,
+    RestoreResult,
     ErrorResponse,
     LocationChangeCreate,
+    LocationChangeDeleteResult,
     LocationChangeList,
     LocationChangeResult,
     Store,
@@ -38,12 +43,13 @@ app = FastAPI(title="OLOCATION API", version="2.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.cors_origins(),
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 Conn = Annotated[sqlite3.Connection, Depends(get_connection)]
 StoreId = Annotated[int, Path(alias="storeId", ge=1, description="ID de la tienda")]
+ChangeId = Annotated[int, Path(alias="changeId", ge=1, description="ID del registro de ubicación")]
 
 failed_attempts = security.FailedAttempts()
 
@@ -88,9 +94,13 @@ def _validation_message(err: dict) -> str:
         "string_too_short": "No puede estar vacío.",
         "string_too_long": f"Debe tener como máximo {ctx.get('max_length')} caracteres.",
         "json_invalid": "El cuerpo no es un JSON válido.",
+        "list_type": "Debe ser una lista.",
+        "bool_type": "Debe ser verdadero o falso.",
         "model_attributes_type": "El cuerpo debe ser un objeto JSON.",
         "dict_type": "El cuerpo debe ser un objeto JSON.",
     }
+    if err["type"] == "value_error":  # mensajes propios de schemas.py, ya en español
+        return str(ctx.get("error", err["msg"])).removeprefix("Value error, ")
     return messages.get(err["type"], err["msg"])
 
 
@@ -228,6 +238,55 @@ def create_location_change(store_id: StoreId, body: LocationChangeCreate, conn: 
         conn, store_id, body.latitude, body.longitude, body.source, body.accuracyM
     )
     return {"store": repository.get_store(conn, store_id), "change": change}
+
+
+@app.delete(
+    "/api/v2/stores/{storeId}/location-changes/{changeId}",
+    response_model=LocationChangeDeleteResult,
+    responses={
+        **BAD_REQUEST,
+        **AUTH_ERRORS,
+        404: {"model": ErrorResponse, "description": "La tienda o el registro no existe"},
+    },
+    dependencies=[Access],
+)
+def delete_location_change(store_id: StoreId, change_id: ChangeId, conn: Conn):
+    _require_store(conn, store_id)
+    change = repository.get_location_change(conn, store_id, change_id)
+    if change is None:
+        raise ApiError(
+            404, "CHANGE_NOT_FOUND", f"La tienda {store_id} no tiene un registro con id {change_id}."
+        )
+    repository.delete_location_change(conn, store_id, change)
+    return {"store": repository.get_store(conn, store_id)}
+
+
+@app.get(
+    "/api/v2/backup",
+    response_model=Backup,
+    responses=AUTH_ERRORS,
+    dependencies=[Access],
+    summary="Descargar respaldo (JSON)",
+)
+def export_backup(conn: Conn):
+    return {
+        "format": BACKUP_FORMAT,
+        "version": BACKUP_VERSION,
+        "exportedAt": security.to_iso(security.utcnow()),
+        "stores": repository.export_backup(conn),
+    }
+
+
+@app.post(
+    "/api/v2/backup",
+    response_model=RestoreResult,
+    responses={**BAD_REQUEST, **AUTH_ERRORS},
+    dependencies=[Access],
+    summary="Restaurar respaldo (reemplaza TODOS los datos)",
+)
+def restore_backup(body: Backup, conn: Conn):
+    stores, changes = repository.restore_backup(conn, [s.model_dump() for s in body.stores])
+    return {"stores": stores, "changes": changes}
 
 
 # App móvil compilada (mobile/dist) servida en la raíz, para probarla desde el navegador.

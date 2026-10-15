@@ -2,7 +2,7 @@
 import { API_BASE } from "../config.js";
 import { DataError } from "./errors.js";
 
-const TIMEOUT_MS = 15000;
+const TIMEOUT_MS = 60000; // generoso: restaurar un respaldo grande puede tardar
 
 async function request(path, { token, method = "GET", body } = {}) {
   const headers = {};
@@ -41,6 +41,7 @@ async function request(path, { token, method = "GET", body } = {}) {
       TOO_MANY_ATTEMPTS: "TOO_MANY_ATTEMPTS",
       UNAUTHORIZED: "UNAUTHORIZED",
       STORE_NOT_FOUND: "STORE_NOT_FOUND",
+      CHANGE_NOT_FOUND: "CHANGE_NOT_FOUND",
       VALIDATION_ERROR: "VALIDATION_ERROR",
       ACCESS_NOT_CONFIGURED: "NOT_CONFIGURED",
     }[err.code] || "UNKNOWN";
@@ -64,4 +65,16 @@ export async function registerLocation(token, storeId, { latitude, longitude, so
   const body = { latitude, longitude, source };
   if (accuracyM != null) body.accuracyM = Math.round(accuracyM * 10) / 10;
   return request(`/stores/${storeId}/location-changes`, { token, method: "POST", body });
+}
+
+export async function exportBackup(token) {
+  return request("/backup", { token });
+}
+
+export async function restoreBackup(token, backup) {
+  return request("/backup", { token, method: "POST", body: backup });
+}
+
+export async function deleteLocationChange(token, storeId, changeId) {
+  return request(`/stores/${storeId}/location-changes/${changeId}`, { token, method: "DELETE" });
 }
