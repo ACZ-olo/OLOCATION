@@ -15,9 +15,17 @@ Se elige con `VITE_DATA_PROVIDER` en `mobile/.env`.
 
 - `supabase/migrations/20261015120000_olocation_v2.sql`: tablas `stores` y
   `store_location_changes` (igual que SQLite), contraseña general, sesiones y 4 funciones RPC.
+- `supabase/migrations/20261015140000_delete_location_change.sql`: función
+  `delete_store_location_change` para borrar registros del historial (misma lógica que el backend).
+- `supabase/migrations/20261015160000_gps_only_and_backup.sql`: el registro solo acepta `gps`, y
+  funciones `export_backup` / `restore_backup` con el **mismo formato JSON** que el backend
+  (un respaldo descargado hoy se puede restaurar en Supabase para migrar los datos).
+  Aplicar las migraciones **en orden** (por nombre de archivo).
   Se probó en PostgreSQL 17 con los roles `anon`/`authenticated` simulados: acceso
-  con contraseña correcta e incorrecta, token inválido, listado con conteo, registro GPS/mapa,
-  validaciones, historial y que `anon` **no** puede leer las tablas ni las funciones privadas.
+  con contraseña correcta e incorrecta, bloqueo tras 10 fallos, token inválido, listado con
+  conteo, registro solo GPS, borrado de registros, respaldo (exportar, restaurar, rechazo de
+  archivos inválidos sin tocar los datos, archivo exportado por el backend FastAPI), validaciones,
+  historial y que `anon` **no** puede leer las tablas ni las funciones privadas.
 - `mobile/src/data/supabase.js`: el adaptador (usa `@supabase/supabase-js`, ya instalado y que
   solo se descarga si se elige este proveedor). **No se probó contra un proyecto real.**
 
@@ -36,8 +44,8 @@ proteja de verdad los datos:
 ## Pasos para activarlo
 
 1. Crear el proyecto en <https://supabase.com> (región cercana, p. ej. `us-east-1`).
-2. Aplicar la migración: **SQL Editor** → pegar el contenido de
-   `supabase/migrations/20261015120000_olocation_v2.sql` → *Run*.
+2. Aplicar las migraciones: **SQL Editor** → pegar el contenido de cada archivo de
+   `supabase/migrations/`, en orden → *Run*.
    (O con la CLI: `supabase link --project-ref <ref>` y `supabase db push`.)
 3. **Cambiar la contraseña inicial** (`cambiar-esta-clave`) en el SQL Editor:
 
@@ -49,8 +57,11 @@ proteja de verdad los datos:
    ```
 
    Repetir lo mismo cada vez que se quiera cambiar la contraseña.
-4. Cargar las tiendas: **Table Editor** → `stores` → *Insert* → *Import data from CSV* con las
-   columnas `code,name,address,latitude,longitude` (el mismo CSV de `backend/seed/`).
+4. Cargar los datos. Lo más simple: en la app actual (backend FastAPI) ir a **Respaldo →
+   Descargar respaldo**; después de activar Supabase (paso 5–6), **Respaldo → Restaurar** con
+   ese archivo: pasan las tiendas con todo su historial.
+   Alternativa solo con tiendas: **Table Editor** → `stores` → *Import data from CSV* con las
+   columnas `code,name,address,latitude,longitude`.
 5. En `mobile/.env`:
 
    ```

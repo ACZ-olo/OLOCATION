@@ -354,6 +354,189 @@
           }
         }
       }
+    },
+    "/api/v2/stores/{storeId}/location-changes/{changeId}": {
+      "delete": {
+        "summary": "Delete Location Change",
+        "operationId": "delete_location_change_api_v2_stores__storeId__location_changes__changeId__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "ID de la tienda",
+              "title": "Storeid"
+            },
+            "description": "ID de la tienda"
+          },
+          {
+            "name": "changeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "ID del registro de ubicación",
+              "title": "Changeid"
+            },
+            "description": "ID del registro de ubicación"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationChangeDeleteResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin token o token inválido/vencido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La tienda o el registro no existe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/backup": {
+      "get": {
+        "summary": "Descargar respaldo (JSON)",
+        "operationId": "export_backup_api_v2_backup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Backup"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin token o token inválido/vencido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Restaurar respaldo (reemplaza TODOS los datos)",
+        "operationId": "restore_backup_api_v2_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Backup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin token o token inválido/vencido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -391,6 +574,218 @@
           "expiresAt"
         ],
         "title": "AccessResponse"
+      },
+      "Backup": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "const": "olocation-backup",
+            "title": "Format"
+          },
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "exportedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exportedat"
+          },
+          "stores": {
+            "items": {
+              "$ref": "#/components/schemas/BackupStore"
+            },
+            "type": "array",
+            "title": "Stores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "format",
+          "version",
+          "stores"
+        ],
+        "title": "Backup",
+        "description": "Respaldo completo: todas las tiendas con su historial. Se identifica a cada tienda por `code`."
+      },
+      "BackupChange": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          },
+          "accuracyM": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracym"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "gps",
+              "map"
+            ],
+            "title": "Source"
+          },
+          "previousLatitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previouslatitude"
+          },
+          "previousLongitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previouslongitude"
+          },
+          "createdAt": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Createdat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "source",
+          "createdAt"
+        ],
+        "title": "BackupChange"
+      },
+      "BackupStore": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "locationUpdatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locationupdatedat"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/BackupChange"
+            },
+            "type": "array",
+            "title": "Changes",
+            "description": "Más reciente primero"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "BackupStore"
       },
       "ErrorBody": {
         "properties": {
@@ -555,12 +950,9 @@
           },
           "source": {
             "type": "string",
-            "enum": [
-              "gps",
-              "map"
-            ],
+            "const": "gps",
             "title": "Source",
-            "description": "gps = ubicación actual del teléfono; map = punto elegido en el mapa"
+            "description": "Siempre gps: la ubicación actual del teléfono"
           },
           "accuracyM": {
             "anyOf": [
@@ -585,6 +977,19 @@
           "source"
         ],
         "title": "LocationChangeCreate"
+      },
+      "LocationChangeDeleteResult": {
+        "properties": {
+          "store": {
+            "$ref": "#/components/schemas/Store",
+            "description": "La tienda después de borrar el registro"
+          }
+        },
+        "type": "object",
+        "required": [
+          "store"
+        ],
+        "title": "LocationChangeDeleteResult"
       },
       "LocationChangeList": {
         "properties": {
@@ -617,6 +1022,24 @@
           "change"
         ],
         "title": "LocationChangeResult"
+      },
+      "RestoreResult": {
+        "properties": {
+          "stores": {
+            "type": "integer",
+            "title": "Stores"
+          },
+          "changes": {
+            "type": "integer",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stores",
+          "changes"
+        ],
+        "title": "RestoreResult"
       },
       "Store": {
         "properties": {

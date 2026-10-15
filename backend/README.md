@@ -93,3 +93,12 @@ python -m scripts.import_stores ruta/tiendas.csv
   el listado nunca pisa una ubicación corregida por un transportista.
 - La carga no cuenta como cambio de ubicación.
 - Si el archivo tiene un error, no se carga nada.
+- El CSV que descarga la app (pestaña Respaldo) se puede importar tal cual: sus columnas extra
+  `change_count` y `location_updated_at` se ignoran.
+
+## Respaldo
+
+`GET /api/v2/backup` devuelve todo (tiendas + historial) en JSON y `POST /api/v2/backup` lo
+restaura **reemplazando todos los datos** (ver `docs/API_CONTRACT.md`, sección 6). Desde la app:
+pestaña **Respaldo**. Copia rápida sin la app: copiar el archivo `data/olocation-v2.db` con el
+servidor detenido.

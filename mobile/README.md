@@ -1,9 +1,11 @@
 # OLOCATION — App móvil (Android)
 
-App para que los transportistas registren la ubicación real de las tiendas: listado con buscador,
-detalle con conteo e historial de cambios, y registro por **GPS** (ubicación actual) o eligiendo
-el punto en el **mapa**. Acceso con contraseña general, opción de recordar el dispositivo y
-tema claro/oscuro.
+App para que los transportistas registren la ubicación real de las tiendas: listado con buscador
+(con la coordenada vigente de cada tienda), detalle con conteo e historial de cambios (se pueden
+borrar registros), y registro **solo con la ubicación actual del teléfono (GPS)**: el mapa es
+fijo, no se mueve ni deja elegir un punto. Pestaña **Respaldo** para descargar/restaurar un
+respaldo JSON y descargar las tiendas en CSV. Acceso con contraseña general, opción de recordar
+el dispositivo y tema claro/oscuro.
 
 - **Stack:** Vite + JavaScript (sin framework) + [Capacitor 8](https://capacitorjs.com) para Android
   + Leaflet / OpenStreetMap.
@@ -105,9 +107,14 @@ npx capacitor-assets generate --android --iconBackgroundColor "#251e1f" --iconBa
 
 - **HTTP en desarrollo:** `capacitor.config.json` permite `http://` (`cleartext`,
   `allowMixedContent`) para hablar con el backend local. En producción usar HTTPS y quitarlos.
-- **GPS:** en el teléfono usa el plugin nativo (pide permiso de ubicación la primera vez). La app
-  escucha el GPS hasta ~12 s y se queda con la lectura más precisa (para en cuanto logra ±15 m);
-  si la precisión es peor que ±50 m lo avisa. El pin siempre se puede arrastrar para ajustar.
+- **GPS:** en el teléfono usa el plugin nativo (pide permiso de ubicación la primera vez). Al abrir
+  "Registrar ubicación" empieza a medir solo: escucha el GPS hasta ~12 s y se queda con la lectura
+  más precisa (para en cuanto logra ±15 m); si la precisión es peor que ±50 m lo avisa y se puede
+  "Volver a medir". No hay forma de elegir ni ajustar el punto a mano.
+- **Respaldo / CSV en Android:** el WebView no descarga archivos, así que se guardan con
+  `@capacitor/filesystem` en **Documentos/OLOCATION** y la app ofrece compartirlos
+  (`@capacitor/share`: Drive, Gmail, WhatsApp…). Para restaurar se elige el `.json` con el
+  selector de archivos del teléfono. En el navegador se descargan normalmente.
 - **Mapa:** teselas de OpenStreetMap (requieren internet, sin API key). Para uso intensivo en
   producción conviene un proveedor de teselas con plan (MapTiler, Stadia, etc.).
 - **Botón atrás de Android:** cierra diálogos, vuelve de pantalla y en el listado sale de la app.

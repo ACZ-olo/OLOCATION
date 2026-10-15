@@ -12,8 +12,9 @@ import { Capacitor } from "@capacitor/core";
 import { getAccess } from "./lib/access.js";
 import { initTheme } from "./lib/theme.js";
 import { closeDialog, initDialog } from "./lib/ui.js";
-import { atRoot, back, route, setGuard, startRouter } from "./router.js";
+import { atRoot, back, go, route, setGuard, startRouter } from "./router.js";
 import { accessScreen } from "./screens/access.js";
+import { backupScreen } from "./screens/backup.js";
 import { locateScreen } from "./screens/locate.js";
 import { storeScreen } from "./screens/store.js";
 import { storesScreen } from "./screens/stores.js";
@@ -25,6 +26,14 @@ route("/acceso", accessScreen);
 route("/tiendas", storesScreen);
 route("/tiendas/:id", storeScreen);
 route("/tiendas/:id/ubicar", locateScreen);
+route("/respaldo", backupScreen);
+
+// Barra inferior (Tiendas / Respaldo): cambiar de pestaña no apila historial.
+for (const tab of document.querySelectorAll(".nav-item[data-tab]")) {
+  tab.addEventListener("click", () => {
+    if (!tab.classList.contains("active")) go(tab.dataset.tab, { replace: true });
+  });
+}
 
 // Sin acceso vigente, todo lleva a la pantalla de contraseña.
 setGuard((path, screen) => {

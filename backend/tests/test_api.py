@@ -169,14 +169,14 @@ def test_register_location_updates_store_and_counts(client, auth):
     assert body["store"]["changeCount"] == 1
     assert body["store"]["locationUpdatedAt"] == change["createdAt"]
 
-    second = register(client, auth, latitude=9.94, longitude=-84.07, source="map", accuracyM=None)
+    second = register(client, auth, latitude=9.94, longitude=-84.07, accuracyM=None)
     assert second.json()["store"]["changeCount"] == 2
     assert second.json()["change"]["previousLatitude"] == 9.93
     assert second.json()["change"]["accuracyM"] is None
 
 
 def test_store_without_location_has_null_previous(client, auth):
-    change = register(client, auth, store_id=2, source="map").json()["change"]
+    change = register(client, auth, store_id=2).json()["change"]
     assert change["previousLatitude"] is None and change["previousLongitude"] is None
 
 
@@ -196,6 +196,7 @@ def test_history_most_recent_first(client, auth):
         ({"longitude": -181}, "longitude"),
         ({"latitude": "9.93"}, "latitude"),
         ({"source": "wifi"}, "source"),
+        ({"source": "map"}, "source"),  # ya no se puede elegir el punto en el mapa
         ({"accuracyM": -1}, "accuracyM"),
         ({"extra": 1}, "extra"),
     ],
@@ -218,6 +219,163 @@ def test_register_requires_source(client, auth):
 def test_register_unknown_store(client, auth):
     res = register(client, auth, store_id=99)
     assert res.status_code == 404
+
+
+# --- Borrado de registros -----------------------------------------------------
+
+
+def delete_change(client, auth, change_id, store_id=1):
+    return client.delete(f"/api/v2/stores/{store_id}/location-changes/{change_id}", headers=auth)
+
+
+def history(client, auth, store_id=1):
+    return client.get(f"/api/v2/stores/{store_id}/location-changes", headers=auth).json()["items"]
+
+
+def test_delete_latest_reverts_to_previous_record(client, auth):
+    first = register(client, auth, latitude=9.91).json()["change"]
+    second = register(client, auth, latitude=9.92).json()["change"]
+    res = delete_change(client, auth, second["id"])
+    assert res.status_code == 200
+    store = res.json()["store"]
+    assert store["changeCount"] == 1
+    assert store["latitude"] == 9.91 and store["locationUpdatedAt"] == first["createdAt"]
+    assert [c["id"] for c in history(client, auth)] == [first["id"]]
+
+
+def test_delete_only_record_restores_initial_coordinate(client, auth):
+    change = register(client, auth).json()["change"]
+    store = delete_change(client, auth, change["id"]).json()["store"]
+    assert (store["latitude"], store["longitude"]) == (9.9, -84.1)
+    assert store["changeCount"] == 0 and store["locationUpdatedAt"] is None
+
+
+def test_delete_only_record_of_store_without_initial_coordinate(client, auth):
+    change = register(client, auth, store_id=2).json()["change"]
+    store = delete_change(client, auth, change["id"], store_id=2).json()["store"]
+    assert store["latitude"] is None and store["longitude"] is None
+
+
+def test_delete_middle_record_keeps_current_and_fixes_chain(client, auth):
+    register(client, auth, latitude=9.91)
+    middle = register(client, auth, latitude=9.92).json()["change"]
+    last = register(client, auth, latitude=9.93).json()["change"]
+    store = delete_change(client, auth, middle["id"]).json()["store"]
+    assert store["latitude"] == 9.93 and store["changeCount"] == 2
+    assert store["locationUpdatedAt"] == last["createdAt"]
+    newest = history(client, auth)[0]
+    assert newest["id"] == last["id"] and newest["previousLatitude"] == 9.91
+
+    # borrar ahora el último vuelve a 9.91 (la coordenada que sigue existiendo)
+    assert delete_change(client, auth, last["id"]).json()["store"]["latitude"] == 9.91
+
+
+def test_delete_unknown_or_foreign_record(client, auth):
+    change = register(client, auth).json()["change"]
+    for store_id, change_id in [(1, 999), (2, change["id"])]:
+        res = delete_change(client, auth, change_id, store_id=store_id)
+        assert res.status_code == 404
+        assert res.json()["error"]["code"] == "CHANGE_NOT_FOUND"
+    assert delete_change(client, auth, change["id"], store_id=99).json()["error"]["code"] == "STORE_NOT_FOUND"
+
+
+def test_delete_requires_token(client, auth):
+    change = register(client, auth).json()["change"]
+    assert delete_change(client, {}, change["id"]).status_code == 401
+
+
+# --- Respaldo (JSON) ------------------------------------------------------------
+
+
+def test_backup_export_contains_stores_and_history(client, auth):
+    first = register(client, auth, latitude=9.91).json()["change"]
+    second = register(client, auth, latitude=9.92).json()["change"]
+    res = client.get("/api/v2/backup", headers=auth)
+    assert res.status_code == 200
+    backup = res.json()
+    assert backup["format"] == "olocation-backup" and backup["version"] == 1
+    assert backup["exportedAt"].endswith("Z")
+    assert [s["code"] for s in backup["stores"]] == ["T1", "T2"]
+    beta = backup["stores"][1]
+    assert beta["latitude"] == 9.92 and beta["locationUpdatedAt"] == second["createdAt"]
+    assert [c["latitude"] for c in beta["changes"]] == [9.92, 9.91]
+    assert beta["changes"][1]["createdAt"] == first["createdAt"]
+    assert "id" not in beta and "storeId" not in beta["changes"][0]
+
+
+def test_backup_roundtrip_replaces_all_data(client, auth):
+    register(client, auth, latitude=9.91)
+    register(client, auth, latitude=9.92)
+    backup = client.get("/api/v2/backup", headers=auth).json()
+
+    register(client, auth, store_id=2)  # cambios después del respaldo: se pierden al restaurar
+    res = client.post("/api/v2/backup", json=backup, headers=auth)
+    assert res.status_code == 200
+    assert res.json() == {"stores": 2, "changes": 2}
+    assert client.get("/api/v2/backup", headers=auth).json()["stores"] == backup["stores"]
+    stores = {s["code"]: s for s in client.get("/api/v2/stores", headers=auth).json()["items"]}
+    assert stores["T2"]["changeCount"] == 2 and stores["T1"]["changeCount"] == 0
+    changes = history(client, auth, store_id=stores["T2"]["id"])
+    assert [c["latitude"] for c in changes] == [9.92, 9.91]  # orden cronológico conservado
+
+
+def test_backup_restore_minimal_file_and_dates_with_offset(client, auth):
+    backup = {
+        "format": "olocation-backup",
+        "version": 1,
+        "stores": [
+            {"code": "N1", "name": "Nueva", "latitude": 10.0, "longitude": -84.0,
+             "locationUpdatedAt": "2026-10-15T08:00:00-06:00",
+             "changes": [{"latitude": 10.0, "longitude": -84.0, "source": "map",
+                          "createdAt": "2026-10-15T08:00:00-06:00"}]},
+            {"code": "N2", "name": "Sin coordenada"},
+        ],
+    }
+    assert client.post("/api/v2/backup", json=backup, headers=auth).json() == {"stores": 2, "changes": 1}
+    items = client.get("/api/v2/stores", headers=auth).json()["items"]
+    assert [s["code"] for s in items] == ["N1", "N2"]
+    assert items[0]["locationUpdatedAt"] == "2026-10-15T14:00:00Z"
+    assert history(client, auth, store_id=items[0]["id"])[0]["source"] == "map"
+
+
+@pytest.mark.parametrize(
+    "mutate, field",
+    [
+        (lambda b: b.update(format="otro"), "format"),
+        (lambda b: b.update(version=2), "version"),
+        (lambda b: b["stores"].append(dict(b["stores"][0])), "body"),  # código repetido
+        # stores[1] es "Beta" (T2), la que tiene coordenada e historial
+        (lambda b: b["stores"][1].update(latitude=None), "stores.1"),  # coordenada a medias
+        (lambda b: b["stores"][1]["changes"][0].update(createdAt="ayer"), "stores.1.changes.0.createdAt"),
+        (lambda b: b["stores"][1]["changes"][0].update(createdAt="2026-10-15T08:00:00"), "stores.1.changes.0.createdAt"),
+        (lambda b: b["stores"][1]["changes"][0].update(latitude=95), "stores.1.changes.0.latitude"),
+        (lambda b: b["stores"][0].update(code=""), "stores.0.code"),
+    ],
+)
+def test_backup_restore_rejects_invalid_file_without_touching_data(client, auth, mutate, field):
+    register(client, auth)
+    backup = client.get("/api/v2/backup", headers=auth).json()
+    mutate(backup)
+    res = client.post("/api/v2/backup", json=backup, headers=auth)
+    assert res.status_code == 400
+    assert any(d["field"].startswith(field) for d in res.json()["error"]["details"]), res.json()
+    assert len(client.get("/api/v2/stores", headers=auth).json()["items"]) == 2
+    assert len(history(client, auth)) == 1
+
+
+def test_backup_requires_token(client):
+    assert client.get("/api/v2/backup").status_code == 401
+    assert client.post("/api/v2/backup", json={}).status_code == 401
+
+
+def test_import_accepts_csv_downloaded_from_app(db_file, tmp_path):
+    csv_file = tmp_path / "tiendas.csv"
+    csv_file.write_text(
+        "﻿code,name,address,latitude,longitude,change_count,location_updated_at\n"
+        "A1,Tienda A,Centro,9.5,-84.5,3,2026-10-15T14:00:00Z\n",
+        encoding="utf-8",
+    )
+    assert run_import(db_file, csv_file).returncode == 0
 
 
 def test_unknown_route_and_method(client, auth):

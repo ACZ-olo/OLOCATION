@@ -1,18 +1,20 @@
 // Detalle de una tienda: coordenada actual, conteo de cambios e historial con fechas.
 import L from "leaflet";
-import { listLocationChanges } from "../data/index.js";
+import { deleteLocationChange, listLocationChanges } from "../data/index.js";
 import { getToken } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
-import { $, icon, setMsg } from "../lib/ui.js";
+import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
 import { go } from "../router.js";
-import { findStore, loadStores } from "../state.js";
+import { findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
 let map;
 let marker;
 let storeId = null;
 let requestSeq = 0;
+let changes = []; // historial mostrado (más reciente primero)
+let deleting = false;
 
 function ensureMap() {
   if (map) return;
@@ -58,7 +60,8 @@ function sourceChip(change) {
     : `<span class="chip-src src-map">${icon("i-tap", "ic xs")} Elegido en el mapa</span>`;
 }
 
-function renderHistory(changes) {
+function renderHistory(items) {
+  changes = items;
   const total = changes.length;
   $("history").innerHTML = changes
     .map((c, i) => {
@@ -72,7 +75,9 @@ function renderHistory(changes) {
         `<div class="change-body">` +
         `<div class="change-top"><span class="change-date">${escapeHtml(formatDateTime(c.createdAt))}</span>${sourceChip(c)}</div>` +
         `<span class="coords">${formatCoords(c.latitude, c.longitude)}</span>${previous}` +
-        `</div></li>`
+        `</div>` +
+        `<button class="icon-btn small change-delete" type="button" data-id="${c.id}"` +
+        ` aria-label="Borrar registro #${total - i}" title="Borrar registro">${icon("i-trash")}</button></li>`
       );
     })
     .join("");
@@ -90,6 +95,57 @@ async function loadHistory(id) {
     if (message && seq === requestSeq) setMsg("historyMsg", message, "error");
   }
 }
+
+async function confirmDelete(change) {
+  const store = findStore(storeId);
+  const index = changes.indexOf(change);
+  const number = changes.length - index;
+  const isLatest = index === 0;
+  let effect;
+  if (!isLatest) {
+    effect = "La coordenada actual de la tienda no cambia.";
+  } else if (change.previousLatitude != null) {
+    effect =
+      `La tienda vuelve a la coordenada anterior:</p>` +
+      `<p class="dialog-coords">${formatCoords(change.previousLatitude, change.previousLongitude)}</p><p class="muted">`;
+  } else {
+    effect = "La tienda queda sin coordenada.";
+  }
+  return confirmDialog({
+    title: `¿Borrar el registro #${number}?`,
+    body:
+      `<p>${escapeHtml(formatDateTime(change.createdAt))} · ${formatCoords(change.latitude, change.longitude)}</p>` +
+      `<p class="muted">${effect} El conteo de ${escapeHtml(store?.name || "la tienda")} baja a ` +
+      `${changes.length - 1}. No se puede deshacer.</p>`,
+    accept: "Borrar",
+  });
+}
+
+$("history").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".change-delete");
+  if (!btn || deleting) return;
+  const change = changes.find((c) => c.id === Number(btn.dataset.id));
+  if (!change || !(await confirmDelete(change))) return;
+
+  deleting = true;
+  btn.disabled = true;
+  const id = storeId;
+  try {
+    const { store } = await deleteLocationChange(getToken(), id, change.id);
+    updateStore(store);
+    toast("Registro borrado.", "ok");
+    if (storeId === id) {
+      renderStore(store);
+      await loadHistory(id);
+    }
+  } catch (e) {
+    handleDataError(e);
+    if (e.code === "CHANGE_NOT_FOUND" && storeId === id) loadHistory(id); // ya no existía
+    btn.disabled = false;
+  } finally {
+    deleting = false;
+  }
+});
 
 $("goLocate").addEventListener("click", () => {
   if (storeId != null) go(`/tiendas/${storeId}/ubicar`);

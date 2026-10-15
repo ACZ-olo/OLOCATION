@@ -41,6 +41,12 @@
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.4 2.5 12 2.5 12S6 18.5 12 18.5c1.9 0 3.5-.6 4.9-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5v-11m0 0L7.5 9M12 4.5 16.5 9M5 19.5h14"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4L12 4Z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4.5h6V7"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6M3.5 4v4h4M12 7.5V12l3 2"/></symbol>
   </svg>
 
@@ -122,6 +128,76 @@
       <p id="storesMore" class="list-more" hidden></p>
       <p id="storesMsg" class="form-msg" aria-live="polite"></p>
     </div>
+    <nav class="bottom-nav" aria-label="Secciones">
+      <button class="nav-item active" type="button" aria-current="page" data-tab="/tiendas">
+        <span class="nav-pill"><svg class="ic"><use href="#i-store"/></svg></span>
+        <span>Tiendas</span>
+      </button>
+      <button class="nav-item" type="button" data-tab="/respaldo">
+        <span class="nav-pill"><svg class="ic"><use href="#i-archive"/></svg></span>
+        <span>Respaldo</span>
+      </button>
+    </nav>
+  </section>
+
+  <!-- =================== Respaldo de datos =================== -->
+  <section id="screenBackup" class="screen" hidden>
+    <header class="top-bar">
+      <svg class="bar-logo" role="img" aria-label="OLO"><use href="#logo-olo"/></svg>
+      <h1 class="bar-title">Respaldo</h1>
+      <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
+        <svg class="ic only-light"><use href="#i-moon"/></svg>
+        <svg class="ic only-dark"><use href="#i-sun"/></svg>
+      </button>
+    </header>
+    <div class="screen-body scroll">
+      <div class="card action-card">
+        <span class="lead"><svg class="ic"><use href="#i-download"/></svg></span>
+        <div class="action-txt">
+          <h2>Guardar respaldo</h2>
+          <p>Descarga todas las tiendas con su historial de cambios en un archivo <strong>JSON</strong>.
+             Guardalo en un lugar seguro (Drive, correo…).</p>
+          <button id="exportBackup" class="btn filled" type="button">
+            <svg class="ic sm"><use href="#i-download"/></svg> Descargar respaldo
+          </button>
+        </div>
+      </div>
+
+      <div class="card action-card">
+        <span class="lead danger"><svg class="ic"><use href="#i-upload"/></svg></span>
+        <div class="action-txt">
+          <h2>Restaurar respaldo</h2>
+          <p>Carga un archivo <strong>JSON</strong> de respaldo.
+             <span class="warn-inline"><svg class="ic xs"><use href="#i-warn"/></svg> Reemplaza todos los datos actuales.</span></p>
+          <button id="importBackup" class="btn tonal" type="button">
+            <svg class="ic sm"><use href="#i-upload"/></svg> Elegir archivo
+          </button>
+        </div>
+      </div>
+
+      <div class="card action-card">
+        <span class="lead"><svg class="ic"><use href="#i-table"/></svg></span>
+        <div class="action-txt">
+          <h2>Tiendas en CSV</h2>
+          <p>Listado de tiendas con su coordenada actual, cantidad de cambios y fecha del último
+             registro. Se abre en Excel.</p>
+          <button id="exportCsv" class="btn tonal" type="button">
+            <svg class="ic sm"><use href="#i-download"/></svg> Descargar CSV
+          </button>
+        </div>
+      </div>
+      <p id="backupMsg" class="form-msg" aria-live="polite"></p>
+    </div>
+    <nav class="bottom-nav" aria-label="Secciones">
+      <button class="nav-item" type="button" data-tab="/tiendas">
+        <span class="nav-pill"><svg class="ic"><use href="#i-store"/></svg></span>
+        <span>Tiendas</span>
+      </button>
+      <button class="nav-item active" type="button" aria-current="page" data-tab="/respaldo">
+        <span class="nav-pill"><svg class="ic"><use href="#i-archive"/></svg></span>
+        <span>Respaldo</span>
+      </button>
+    </nav>
   </section>
 
   <!-- =================== Detalle de tienda =================== -->
@@ -188,7 +264,7 @@
       </div>
     </header>
     <div class="map-wrap">
-      <div id="locateMap" class="map" role="application" aria-label="Mapa: tocá para elegir el punto"></div>
+      <div id="locateMap" class="map" aria-label="Mapa con tu ubicación actual"></div>
       <div class="map-legend" id="mapLegend" hidden>
         <span><i class="dot current"></i> Actual</span>
         <span><i class="dot new"></i> Nuevo</span>
@@ -196,15 +272,15 @@
     </div>
     <div class="sheet">
       <div class="sheet-row">
-        <span id="locateIcon" class="sheet-icon"><svg class="ic"><use href="#i-tap"/></svg></span>
+        <span id="locateIcon" class="sheet-icon"><svg class="ic"><use href="#i-gps"/></svg></span>
         <div class="sheet-txt">
-          <p id="locateStatus" class="sheet-title">Elegí cómo registrar la ubicación</p>
-          <p id="locateDetail" class="sheet-text">Usá tu ubicación actual o tocá el mapa en el punto exacto de la tienda.</p>
+          <p id="locateStatus" class="sheet-title">Buscando tu ubicación…</p>
+          <p id="locateDetail" class="sheet-text">Parate en la entrada de la tienda.</p>
         </div>
       </div>
       <div class="sheet-actions">
         <button id="useGps" class="btn tonal" type="button">
-          <svg class="ic sm"><use href="#i-gps"/></svg> <span>Mi ubicación</span>
+          <svg class="ic sm"><use href="#i-gps"/></svg> <span>Volver a medir</span>
         </button>
         <button id="saveLocation" class="btn filled" type="button" disabled>
           <svg class="ic sm"><use href="#i-check"/></svg> Guardar

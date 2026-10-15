@@ -14,9 +14,13 @@
    La app guarda el `token` (si marcó *Recordar este dispositivo*, de forma permanente).
 2. Listado de tiendas con buscador → `GET /api/v2/stores` (todas; el filtrado es en la app).
 3. Detalle de una tienda: coordenada actual, conteo e historial → `GET /api/v2/stores/{storeId}/location-changes`.
-4. Registrar ubicación (GPS o punto en el mapa) → `POST /api/v2/stores/{storeId}/location-changes`.
+4. Registrar la ubicación **actual del teléfono (GPS)** → `POST /api/v2/stores/{storeId}/location-changes`.
+   No se puede elegir un punto en el mapa: el mapa de la app es fijo y solo muestra la posición.
+5. Borrar un registro del historial → `DELETE /api/v2/stores/{storeId}/location-changes/{changeId}`.
+6. Pestaña **Respaldo**: descargar/restaurar respaldo JSON → `GET`/`POST /api/v2/backup`; el CSV de
+   tiendas lo arma la app con el listado del paso 2.
 
-Los pasos 2–4 envían `Authorization: Bearer <token>`.
+Los pasos 2–6 envían `Authorization: Bearer <token>`.
 
 ## Convenciones
 
@@ -110,8 +114,9 @@ Los pasos 2–4 envían `Authorization: Bearer <token>`.
 }
 ```
 
-- `source`: `gps` (ubicación actual del teléfono) o `map` (punto elegido/ajustado en el mapa).
-- `accuracyM`: precisión del GPS en metros; `null` si se eligió en el mapa.
+- `source`: `gps` (ubicación actual del teléfono). `map` solo aparece en registros hechos antes de
+  que se quitara la opción de elegir el punto en el mapa (o que vengan de un respaldo).
+- `accuracyM`: precisión del GPS en metros; `null` en registros `map`.
 - `previousLatitude/Longitude`: la coordenada que tenía la tienda antes (`null` si no tenía).
 
 ## 4. Registrar la ubicación de una tienda
@@ -126,7 +131,7 @@ Los pasos 2–4 envían `Authorization: Bearer <token>`.
 |---|---|---|---|
 | `latitude` | number | sí | −90…90, finito |
 | `longitude` | number | sí | −180…180, finito |
-| `source` | string | sí | `gps` o `map` |
+| `source` | string | sí | Solo `gps` (`map` → `400 VALIDATION_ERROR`) |
 | `accuracyM` | number | no | 0…100000 |
 
 `201 Created` — la tienda actualizada (con el nuevo `changeCount`) y el cambio registrado:
@@ -137,6 +142,77 @@ Los pasos 2–4 envían `Authorization: Bearer <token>`.
 
 Cada POST crea un cambio nuevo y suma uno al conteo: la app pide confirmación y deshabilita
 **Guardar** mientras envía. No reintentar automáticamente.
+
+## 5. Borrar un registro del historial
+
+`DELETE /api/v2/stores/{storeId}/location-changes/{changeId}` — sin cuerpo.
+
+`200 OK` — la tienda ya actualizada:
+
+```json
+{ "store": { "id": 1, "latitude": 9.9351, "longitude": -84.1012, "changeCount": 1, "...": "..." } }
+```
+
+- El conteo (`changeCount`) baja en uno. El borrado es definitivo.
+- **Si se borra el registro más reciente**, la tienda vuelve a la coordenada anterior (la del
+  registro previo, o la de la carga inicial si no queda ninguno, o `null` si no tenía) y
+  `locationUpdatedAt` pasa a ser la fecha del registro que queda como último (o `null`).
+- **Si se borra uno del medio**, la coordenada vigente no cambia; el registro siguiente hereda
+  el `previousLatitude/Longitude` del borrado para que su "Antes" siga siendo correcto.
+
+| HTTP | `error.code` | Cuándo |
+|---|---|---|
+| 404 | `STORE_NOT_FOUND` | La tienda no existe |
+| 404 | `CHANGE_NOT_FOUND` | El registro no existe o es de otra tienda (p. ej. ya lo borró otra persona) |
+
+## 6. Respaldo de datos (JSON)
+
+`GET /api/v2/backup` — todas las tiendas con su historial completo. Es el archivo que descarga la
+pestaña **Respaldo** (`olocation-respaldo-AAAA-MM-DD-HHMM.json`):
+
+```json
+{
+  "format": "olocation-backup",
+  "version": 1,
+  "exportedAt": "2026-10-15T20:35:00Z",
+  "stores": [
+    {
+      "code": "T-001", "name": "Súper La Sabana", "address": "Mata Redonda, San José",
+      "latitude": 9.93525, "longitude": -84.10085,
+      "locationUpdatedAt": "2026-10-15T17:31:00Z", "createdAt": "2026-10-15T15:00:00Z",
+      "changes": [
+        { "latitude": 9.93525, "longitude": -84.10085, "accuracyM": 7.0, "source": "gps",
+          "previousLatitude": 9.9351, "previousLongitude": -84.1012, "createdAt": "2026-10-15T17:31:00Z" }
+      ]
+    }
+  ]
+}
+```
+
+- Las tiendas se identifican por `code` (no lleva IDs internos), así el archivo sirve para pasar
+  los datos a otro servidor, incluido Supabase (`docs/SUPABASE.md`), que usa el mismo formato.
+- `changes` va del más reciente al más antiguo.
+
+`POST /api/v2/backup` — cuerpo: un respaldo con ese formato. **Reemplaza todos los datos** (tiendas
+e historial) en una sola operación. `200 OK`: `{ "stores": 15, "changes": 6 }`.
+
+- Se valida todo antes de escribir; si algo está mal (`format`/`version` desconocidos, códigos
+  repetidos, coordenadas fuera de rango o a medias, fechas sin zona horaria…) responde
+  `400 VALIDATION_ERROR` con el detalle (p. ej. `stores.3.changes.0.createdAt`) y **no se toca nada**.
+- Los campos opcionales pueden faltar: `address`, `latitude/longitude`, `locationUpdatedAt`,
+  `createdAt` (de la tienda), `changes`, `accuracyM`, `previousLatitude/Longitude`.
+- Las fechas aceptan `Z` u offset (`-06:00`) y se guardan en UTC.
+
+### CSV de tiendas
+
+Lo genera la app (no es un endpoint) con el listado de tiendas: UTF‑8 con BOM, separado por comas.
+
+```csv
+code,name,address,latitude,longitude,change_count,location_updated_at
+T-015,Súper Grecia,"Grecia centro, Alajuela",10.0739,-84.3116,1,2026-10-15T20:35:31Z
+```
+
+Se puede volver a importar con `python -m scripts.import_stores` (ignora las dos últimas columnas).
 
 ## Formato de error
 
@@ -151,6 +227,7 @@ Cada POST crea un cambio nuevo y suma uno al conteo: la app pide confirmación y
 | 401 | `INVALID_PASSWORD` | Mostrar mensaje en la pantalla de acceso |
 | 401 | `UNAUTHORIZED` | Borrar el token y volver a la pantalla de acceso |
 | 404 | `STORE_NOT_FOUND` | Refrescar el listado |
+| 404 | `CHANGE_NOT_FOUND` | Recargar el historial |
 | 404 / 405 | `NOT_FOUND` / `METHOD_NOT_ALLOWED` | — |
 | 429 | `TOO_MANY_ATTEMPTS` | Mostrar `message` |
 | 503 | `ACCESS_NOT_CONFIGURED` | Avisar al administrador |
