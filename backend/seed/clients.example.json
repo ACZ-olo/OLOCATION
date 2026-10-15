@@ -1,0 +1,26 @@
+{
+  "clients": [
+    {
+      "code": "CLI-001",
+      "name": "Cliente de ejemplo A",
+      "locations": [
+        { "label": "Bodega principal", "latitude": 9.9325, "longitude": -84.0796 }
+      ]
+    },
+    {
+      "code": "CLI-002",
+      "name": "Cliente de ejemplo B",
+      "locations": []
+    }
+  ],
+  "carriers": [
+    {
+      "idNumber": "1-1111-1111",
+      "name": "Transportista de ejemplo",
+      "plate": "ABC-123",
+      "phone": "8888-8888",
+      "pin": "1234",
+      "clients": ["CLI-001", "CLI-002"]
+    }
+  ]
+}

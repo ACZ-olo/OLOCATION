@@ -1,0 +1,88 @@
+{
+  "clients": [
+    {
+      "code": "CLI-001",
+      "name": "Distribuidora La Sabana",
+      "locations": [
+        { "label": "Bodega principal", "latitude": 9.9370, "longitude": -84.1006 },
+        { "label": "Andén de carga", "latitude": 9.9381, "longitude": -84.0989 }
+      ]
+    },
+    {
+      "code": "CLI-002",
+      "name": "Ferretería El Roble",
+      "locations": [
+        { "label": "Tienda", "latitude": 10.0024, "longitude": -84.1165 }
+      ]
+    },
+    {
+      "code": "CLI-003",
+      "name": "Supermercado Monteverde",
+      "locations": []
+    },
+    {
+      "code": "CLI-004",
+      "name": "Panadería Don Tomás",
+      "locations": [
+        { "label": "Entrada trasera", "latitude": 9.8644, "longitude": -83.9194 }
+      ]
+    },
+    {
+      "code": "CLI-005",
+      "name": "Abastecedor Puerto Azul",
+      "locations": [
+        { "label": "Muelle", "latitude": 9.9763, "longitude": -84.8384 }
+      ]
+    },
+    {
+      "code": "CLI-006",
+      "name": "Farmacia Central Liberia",
+      "locations": []
+    },
+    {
+      "code": "CLI-007",
+      "name": "Bodega Caribe Sur",
+      "locations": [
+        { "label": "Portón 2", "latitude": 9.9907, "longitude": -83.0360 }
+      ]
+    },
+    {
+      "code": "CLI-008",
+      "name": "Agroinsumos San Carlos",
+      "locations": []
+    }
+  ],
+  "carriers": [
+    {
+      "idNumber": "1-1111-1111",
+      "name": "Carlos Jiménez Rojas",
+      "plate": "ABC-123",
+      "phone": "8800-1111",
+      "pin": "1234",
+      "clients": ["CLI-001", "CLI-002", "CLI-003", "CLI-004"]
+    },
+    {
+      "idNumber": "2-2222-2222",
+      "name": "María Fernández Solís",
+      "plate": "CRT-456",
+      "phone": "8800-2222",
+      "pin": "5678",
+      "clients": ["CLI-001", "CLI-005", "CLI-006"]
+    },
+    {
+      "idNumber": "3-3333-3333",
+      "name": "José Vargas Mora",
+      "plate": "LMN-789",
+      "pin": "2468",
+      "clients": ["CLI-007", "CLI-008"]
+    },
+    {
+      "idNumber": "4-4444-4444",
+      "name": "Laura Castro Quesada",
+      "plate": "SJB-321",
+      "phone": "8800-4444",
+      "pin": "1357",
+      "clients": []
+    }
+  ]
+}

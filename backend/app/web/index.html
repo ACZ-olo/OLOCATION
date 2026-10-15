@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>OLOCATION — Transportistas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- =================== Pantalla 1: Registro =================== -->
+  <section id="screenRegister" class="screen" data-screen="register">
+    <header class="app-header">
+      <h1>OLOCATION</h1>
+    </header>
+    <div class="screen-body center">
+      <form id="carrierForm" class="card">
+        <h2>Iniciar sesión</h2>
+        <p class="hint">Ingresá tu cédula y PIN. Si no tenés PIN, pedíselo a tu supervisor.</p>
+        <label>Cédula / identificación *
+          <input id="carrierId" type="text" maxlength="30" inputmode="numeric" autocomplete="username" required />
+        </label>
+        <label>PIN *
+          <input id="carrierPin" type="password" minlength="4" maxlength="8" inputmode="numeric"
+                 autocomplete="current-password" pattern="[0-9]*" required />
+        </label>
+
+        <button id="toggleDatos" class="link" type="button">Actualizar mis datos (opcional)</button>
+        <div id="datosExtra" hidden>
+          <label>Nombre completo
+            <input id="carrierName" type="text" maxlength="100" autocomplete="name" />
+          </label>
+          <label>Placa del vehículo
+            <input id="carrierPlate" type="text" maxlength="15" autocomplete="off" />
+          </label>
+          <label>Teléfono
+            <input id="carrierPhone" type="tel" maxlength="30" autocomplete="tel" />
+          </label>
+        </div>
+
+        <button id="carrierSubmit" type="submit" class="primary block">Entrar</button>
+        <p id="onboardMsg" class="form-msg" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- =================== Pantalla 2: Clientes =================== -->
+  <section id="screenClients" class="screen" data-screen="clients" hidden>
+    <header class="app-header">
+      <h1>Clientes</h1>
+      <button id="logoutBtn" class="header-action" type="button">Salir</button>
+    </header>
+    <div class="carrier-strip">
+      <span id="carrierNameLabel"></span>
+      <button id="recordsBtn" class="strip-action" type="button">Registros</button>
+    </div>
+    <div class="screen-body scroll">
+      <ul id="clients" class="list big" aria-label="Clientes del transportista"></ul>
+      <p id="clientsMsg" class="form-msg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- =================== Pantalla: Registros =================== -->
+  <section id="screenRecords" class="screen" data-screen="records" hidden>
+    <header class="app-header">
+      <button id="recordsBack" class="header-back" type="button" aria-label="Volver">‹</button>
+      <h1>Mis registros</h1>
+    </header>
+    <div class="screen-body scroll">
+      <div id="records"></div>
+      <p id="recordsMsg" class="form-msg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- =================== Pantalla 3: Mapa =================== -->
+  <section id="screenMap" class="screen" data-screen="map" hidden>
+    <header class="app-header">
+      <button id="mapBack" class="header-back" type="button" aria-label="Volver">‹</button>
+      <h1 id="mapTitle">Seleccionar ubicación</h1>
+    </header>
+    <div class="map-wrap">
+      <div id="map" class="map" role="application" aria-label="Mapa"></div>
+      <div id="mapHint" class="map-hint">Tocá el mapa o usá tu GPS para fijar el punto</div>
+      <div class="map-footer">
+        <button id="gpsBtn" class="ghost" type="button">Usar mi GPS</button>
+        <button id="toReviewBtn" class="primary" type="button" disabled>Continuar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== Pantalla 4: Revisar y guardar =================== -->
+  <section id="screenReview" class="screen" data-screen="review" hidden>
+    <header class="app-header">
+      <button id="reviewBack" class="header-back" type="button" aria-label="Volver">‹</button>
+      <h1>Revisar y guardar</h1>
+    </header>
+    <div class="screen-body scroll">
+      <div class="card">
+        <h2>Datos de la ubicación</h2>
+        <dl class="review-data">
+          <div><dt>Cliente</dt><dd id="reviewClient">—</dd></div>
+          <div><dt>Latitud</dt><dd id="reviewLat">—</dd></div>
+          <div><dt>Longitud</dt><dd id="reviewLng">—</dd></div>
+        </dl>
+        <label>Etiqueta (opcional)
+          <input id="labelInput" type="text" maxlength="100" placeholder="Ej: Bodega principal" />
+        </label>
+        <p id="labelMsg" class="form-msg" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="screen-footer">
+      <button id="reviewDiscard" class="ghost" type="button">Descartar</button>
+      <button id="reviewSave" class="primary" type="button">Guardar</button>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
