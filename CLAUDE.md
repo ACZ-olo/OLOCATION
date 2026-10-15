@@ -5,7 +5,9 @@ App Android para transportistas: seleccionar un cliente y guardar la coordenada 
 - Claude es responsable del **backend** (`backend/`, FastAPI + SQLite). Kiro es responsable del
   **frontend Android** (`android/`) y de la web de prueba (`backend/app/web/`); no modificar su código.
 - Comandos del backend (desde `backend/`): `python -m pytest`, `python -m scripts.migrate`,
-  `python -m scripts.seed seed/clients.example.json`, `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+  `python -m scripts.import_stores seed/stores.demo.csv`, `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+- App v2 (desde `mobile/`): `npm run dev`, `npm run build`, `npm run android:sync`, `npm run android:apk`
+  (con `JAVA_HOME` = `C:\Program Files\Android\Android Studio\jbr`).
 
 ## Coordinación con Kiro
 

@@ -1,29 +1,27 @@
 import sqlite3
 from contextlib import asynccontextmanager
-from pathlib import Path as FsPath
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Path, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import repository, security
+from app import config, repository, security
 from app.db import connect, get_connection, migrate
 from app.schemas import (
-    CarrierLocationList,
-    ClientList,
+    AccessRequest,
+    AccessResponse,
     ErrorResponse,
-    Location,
-    LocationCreate,
-    LocationList,
-    LoginRequest,
-    LoginResponse,
+    LocationChangeCreate,
+    LocationChangeList,
+    LocationChangeResult,
+    Store,
+    StoreList,
 )
-
-WEB_DIR = FsPath(__file__).resolve().parent / "web"
 
 
 @asynccontextmanager
@@ -36,34 +34,41 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="OLOCATION API", version="1.3.0", lifespan=lifespan)
+app = FastAPI(title="OLOCATION API", version="2.0.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.cors_origins(),
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 Conn = Annotated[sqlite3.Connection, Depends(get_connection)]
-ClientId = Annotated[int, Path(alias="clientId", ge=1, description="ID del cliente")]
-CarrierId = Annotated[int, Path(alias="carrierId", ge=1, description="ID del transportista")]
+StoreId = Annotated[int, Path(alias="storeId", ge=1, description="ID de la tienda")]
 
-ERRORS = {
-    400: {"model": ErrorResponse, "description": "Datos inválidos"},
-    404: {"model": ErrorResponse, "description": "Cliente no encontrado"},
-}
+failed_attempts = security.FailedAttempts()
 
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str):
-        self.status, self.code, self.message = status, code, message
+    def __init__(self, status: int, code: str, message: str, headers: dict | None = None):
+        self.status, self.code, self.message, self.headers = status, code, message, headers
 
 
-def _error(status: int, code: str, message: str, details: list | None = None) -> JSONResponse:
+def _error(
+    status: int, code: str, message: str, details: list | None = None, headers: dict | None = None
+) -> JSONResponse:
+    headers = dict(headers or {})
+    if status == 401:
+        headers["WWW-Authenticate"] = "Bearer"
     return JSONResponse(
         status_code=status,
         content={"error": {"code": code, "message": message, "details": details or []}},
-        headers={"WWW-Authenticate": "Bearer"} if status == 401 else None,
+        headers=headers or None,
     )
 
 
 @app.exception_handler(ApiError)
 async def api_error_handler(_: Request, exc: ApiError):
-    return _error(exc.status, exc.code, exc.message)
+    return _error(exc.status, exc.code, exc.message, headers=exc.headers)
 
 
 def _validation_message(err: dict) -> str:
@@ -77,17 +82,15 @@ def _validation_message(err: dict) -> str:
         "int_type": "Debe ser un número entero.",
         "int_parsing": "Debe ser un número entero.",
         "string_type": "Debe ser un texto.",
+        "literal_error": f"Debe ser uno de: {ctx.get('expected')}.",
         "greater_than_equal": f"Debe ser mayor o igual que {ctx.get('ge')}.",
         "less_than_equal": f"Debe ser menor o igual que {ctx.get('le')}.",
         "string_too_short": "No puede estar vacío.",
         "string_too_long": f"Debe tener como máximo {ctx.get('max_length')} caracteres.",
-        "string_pattern_mismatch": "Debe tener de 4 a 8 dígitos.",
         "json_invalid": "El cuerpo no es un JSON válido.",
         "model_attributes_type": "El cuerpo debe ser un objeto JSON.",
         "dict_type": "El cuerpo debe ser un objeto JSON.",
     }
-    if err["type"] == "value_error":  # mensajes propios de schemas.py, ya en español
-        return str(ctx.get("error", err["msg"]))
     return messages.get(err["type"], err["msg"])
 
 
@@ -114,139 +117,120 @@ async def unexpected_error_handler(_: Request, __: Exception):
     return _error(500, "INTERNAL_ERROR", "Error interno del servidor.")
 
 
-def _require_client(conn: sqlite3.Connection, client_id: int) -> None:
-    if not repository.client_exists(conn, client_id):
-        raise ApiError(404, "CLIENT_NOT_FOUND", f"No existe un cliente con id {client_id}.")
-
-
-def _require_assigned(conn: sqlite3.Connection, carrier_id: int, client_id: int) -> None:
-    _require_client(conn, client_id)
-    if not repository.is_client_assigned(conn, carrier_id, client_id):
+def _configured_password() -> str:
+    password = config.access_password()
+    if password is None:
         raise ApiError(
-            403, "CLIENT_NOT_ASSIGNED", f"El cliente {client_id} no está asignado a este transportista."
+            503,
+            "ACCESS_NOT_CONFIGURED",
+            "El servidor no tiene contraseña de acceso configurada (OLOCATION_ACCESS_PASSWORD).",
+        )
+    return password
+
+
+bearer = HTTPBearer(auto_error=False, description="Token devuelto por POST /api/v2/access")
+
+
+def require_access(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+) -> None:
+    """Exige `Authorization: Bearer <token>` válido (obtenido con la contraseña general)."""
+    password = _configured_password()
+    if credentials is None:
+        raise ApiError(401, "UNAUTHORIZED", "Falta el token de acceso. Ingresá la contraseña.")
+    if not security.verify_token(
+        credentials.credentials, password, config.token_secret(), security.utcnow()
+    ):
+        raise ApiError(
+            401, "UNAUTHORIZED", "El acceso venció o la contraseña cambió. Ingresala de nuevo."
         )
 
 
-bearer = HTTPBearer(auto_error=False, description="Token devuelto por POST /api/v1/auth/login")
+Access = Depends(require_access)
+
+AUTH_ERRORS = {401: {"model": ErrorResponse, "description": "Sin token o token inválido/vencido"}}
+NOT_FOUND = {404: {"model": ErrorResponse, "description": "La tienda no existe"}}
+BAD_REQUEST = {400: {"model": ErrorResponse, "description": "Datos inválidos"}}
 
 
-def current_carrier(
-    conn: Conn, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
-) -> int:
-    """ID del transportista dueño del token `Authorization: Bearer <token>`."""
-    if credentials is None:
-        raise ApiError(401, "UNAUTHORIZED", "Falta el token de sesión. Iniciá sesión.")
-    carrier_id = repository.carrier_id_for_token(
-        conn, security.hash_token(credentials.credentials), security.to_iso(security.utcnow())
-    )
-    if carrier_id is None:
-        raise ApiError(401, "UNAUTHORIZED", "La sesión no es válida o expiró. Iniciá sesión de nuevo.")
-    return carrier_id
-
-
-CurrentCarrier = Annotated[int, Depends(current_carrier)]
-
-AUTH_ERRORS = {
-    401: {"model": ErrorResponse, "description": "Sin token o token inválido/expirado"},
-    403: {"model": ErrorResponse, "description": "Cliente no asignado / acceso a otro transportista"},
-}
-
-# Hash calculado una vez para gastar el mismo tiempo cuando la cédula no existe.
-_DUMMY_PIN_HASH = security.hash_pin("0000")
+def _require_store(conn: sqlite3.Connection, store_id: int) -> dict:
+    store = repository.get_store(conn, store_id)
+    if store is None:
+        raise ApiError(404, "STORE_NOT_FOUND", f"No existe una tienda con id {store_id}.")
+    return store
 
 
 @app.post(
-    "/api/v1/auth/login",
-    response_model=LoginResponse,
+    "/api/v2/access",
+    response_model=AccessResponse,
     responses={
-        400: ERRORS[400],
-        401: {"model": ErrorResponse, "description": "Cédula o PIN incorrectos"},
-        429: {"model": ErrorResponse, "description": "Bloqueado por demasiados intentos"},
+        **BAD_REQUEST,
+        401: {"model": ErrorResponse, "description": "Contraseña incorrecta"},
+        429: {"model": ErrorResponse, "description": "Demasiados intentos fallidos"},
+        503: {"model": ErrorResponse, "description": "Contraseña no configurada en el servidor"},
     },
 )
-def login(body: LoginRequest, conn: Conn):
-    now = security.utcnow()
-    row = repository.get_carrier_credentials(conn, body.idNumber)
-    if row is None or row["pin_hash"] is None:
-        security.verify_pin(body.pin, _DUMMY_PIN_HASH)
-        raise ApiError(401, "INVALID_CREDENTIALS", "Cédula o PIN incorrectos.")
-
-    if row["locked_until"] and security.from_iso(row["locked_until"]) > now:
-        raise _locked_error(security.from_iso(row["locked_until"]), now)
-
-    if not security.verify_pin(body.pin, row["pin_hash"]):
-        attempts = row["failed_attempts"] + 1
-        if attempts >= security.MAX_FAILED_ATTEMPTS:
-            locked_until = now + security.LOCKOUT
-            repository.record_failed_login(conn, row["id"], 0, security.to_iso(locked_until))
-            raise _locked_error(locked_until, now)
-        repository.record_failed_login(conn, row["id"], attempts, None)
-        raise ApiError(401, "INVALID_CREDENTIALS", "Cédula o PIN incorrectos.")
-
-    token = security.new_token()
-    expires_at = security.to_iso(now + security.TOKEN_TTL)
-    profile = body.model_dump(include={"name", "plate", "phone"}, exclude_none=True)
-    repository.record_successful_login(
-        conn, row["id"], profile, security.hash_token(token), expires_at, security.to_iso(now)
-    )
-    return {"token": token, "expiresAt": expires_at, "carrier": repository.get_carrier(conn, row["id"])}
+def access(body: AccessRequest, request: Request):
+    password = _configured_password()
+    client_key = request.client.host if request.client else "?"
+    if wait := failed_attempts.retry_after(client_key):
+        minutes = -(-wait // 60)
+        raise ApiError(
+            429,
+            "TOO_MANY_ATTEMPTS",
+            f"Demasiados intentos fallidos. Intentá de nuevo en {minutes} minuto(s).",
+            headers={"Retry-After": str(wait)},
+        )
+    if not security.check_password(body.password, password):
+        failed_attempts.record_failure(client_key)
+        raise ApiError(401, "INVALID_PASSWORD", "Contraseña incorrecta.")
+    failed_attempts.reset(client_key)
+    token, expires_at = security.issue_token(password, config.token_secret(), security.utcnow())
+    return {"token": token, "expiresAt": security.to_iso(expires_at)}
 
 
-def _locked_error(locked_until, now) -> ApiError:
-    minutes = max(1, -(-int((locked_until - now).total_seconds()) // 60))
-    return ApiError(
-        429,
-        "TOO_MANY_ATTEMPTS",
-        f"Demasiados intentos fallidos. Intentá de nuevo en {minutes} minuto(s).",
-    )
+@app.get("/api/v2/stores", response_model=StoreList, responses=AUTH_ERRORS, dependencies=[Access])
+def list_stores(conn: Conn):
+    return {"items": repository.list_stores(conn)}
 
 
 @app.get(
-    "/api/v1/carriers/{carrierId}/clients",
-    response_model=ClientList,
-    responses={400: ERRORS[400], **AUTH_ERRORS},
+    "/api/v2/stores/{storeId}",
+    response_model=Store,
+    responses={**BAD_REQUEST, **AUTH_ERRORS, **NOT_FOUND},
+    dependencies=[Access],
 )
-def list_carrier_clients(carrier_id: CarrierId, me: CurrentCarrier, conn: Conn):
-    if carrier_id != me:
-        raise ApiError(403, "FORBIDDEN", "Solo podés consultar tus propios clientes.")
-    return {"items": repository.list_carrier_clients(conn, carrier_id)}
+def get_store(store_id: StoreId, conn: Conn):
+    return _require_store(conn, store_id)
 
 
 @app.get(
-    "/api/v1/carriers/{carrierId}/locations",
-    response_model=CarrierLocationList,
-    responses={400: ERRORS[400], **AUTH_ERRORS},
+    "/api/v2/stores/{storeId}/location-changes",
+    response_model=LocationChangeList,
+    responses={**BAD_REQUEST, **AUTH_ERRORS, **NOT_FOUND},
+    dependencies=[Access],
 )
-def list_carrier_locations(carrier_id: CarrierId, me: CurrentCarrier, conn: Conn):
-    if carrier_id != me:
-        raise ApiError(403, "FORBIDDEN", "Solo podés consultar tus propios registros.")
-    return {"items": repository.list_carrier_locations(conn, carrier_id)}
-
-
-@app.get(
-    "/api/v1/clients/{clientId}/locations",
-    response_model=LocationList,
-    responses={**ERRORS, **AUTH_ERRORS},
-)
-def list_locations(client_id: ClientId, me: CurrentCarrier, conn: Conn):
-    _require_assigned(conn, me, client_id)
-    return {"items": repository.list_locations(conn, client_id)}
+def list_location_changes(store_id: StoreId, conn: Conn):
+    _require_store(conn, store_id)
+    return {"items": repository.list_location_changes(conn, store_id)}
 
 
 @app.post(
-    "/api/v1/clients/{clientId}/locations",
-    response_model=Location,
+    "/api/v2/stores/{storeId}/location-changes",
+    response_model=LocationChangeResult,
     status_code=201,
-    responses={**ERRORS, **AUTH_ERRORS},
+    responses={**BAD_REQUEST, **AUTH_ERRORS, **NOT_FOUND},
+    dependencies=[Access],
 )
-def create_location(client_id: ClientId, body: LocationCreate, me: CurrentCarrier, conn: Conn):
-    _require_assigned(conn, me, client_id)
-    return repository.create_location(
-        conn, client_id, me, body.latitude, body.longitude, body.label
+def create_location_change(store_id: StoreId, body: LocationChangeCreate, conn: Conn):
+    _require_store(conn, store_id)
+    change = repository.create_location_change(
+        conn, store_id, body.latitude, body.longitude, body.source, body.accuracyM
     )
+    return {"store": repository.get_store(conn, store_id), "change": change}
 
 
-# Web app (HTML + Leaflet) servida en la raíz. Se monta al final para que las rutas
-# /api/v1/*, /docs y /openapi.json tengan prioridad. html=True sirve index.html en "/".
-if WEB_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
+# App móvil compilada (mobile/dist) servida en la raíz, para probarla desde el navegador.
+# Se monta al final para que /api/v2/*, /docs y /openapi.json tengan prioridad.
+if config.MOBILE_DIST_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=config.MOBILE_DIST_DIR, html=True), name="mobile")

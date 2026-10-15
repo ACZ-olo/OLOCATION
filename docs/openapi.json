@@ -2,18 +2,18 @@
   "openapi": "3.1.0",
   "info": {
     "title": "OLOCATION API",
-    "version": "1.3.0"
+    "version": "2.0.0"
   },
   "paths": {
-    "/api/v1/auth/login": {
+    "/api/v2/access": {
       "post": {
-        "summary": "Login",
-        "operationId": "login_api_v1_auth_login_post",
+        "summary": "Access",
+        "operationId": "access_api_v2_access_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
+                "$ref": "#/components/schemas/AccessRequest"
               }
             }
           },
@@ -25,7 +25,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
+                  "$ref": "#/components/schemas/AccessResponse"
                 }
               }
             }
@@ -41,7 +41,7 @@
             }
           },
           "401": {
-            "description": "Cédula o PIN incorrectos",
+            "description": "Contraseña incorrecta",
             "content": {
               "application/json": {
                 "schema": {
@@ -51,7 +51,17 @@
             }
           },
           "429": {
-            "description": "Bloqueado por demasiados intentos",
+            "description": "Demasiados intentos fallidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contraseña no configurada en el servidor",
             "content": {
               "application/json": {
                 "schema": {
@@ -73,10 +83,43 @@
         }
       }
     },
-    "/api/v1/carriers/{carrierId}/clients": {
+    "/api/v2/stores": {
       "get": {
-        "summary": "List Carrier Clients",
-        "operationId": "list_carrier_clients_api_v1_carriers__carrierId__clients_get",
+        "summary": "List Stores",
+        "operationId": "list_stores_api_v2_stores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin token o token inválido/vencido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/stores/{storeId}": {
+      "get": {
+        "summary": "Get Store",
+        "operationId": "get_store_api_v2_stores__storeId__get",
         "security": [
           {
             "HTTPBearer": []
@@ -84,16 +127,16 @@
         ],
         "parameters": [
           {
-            "name": "carrierId",
+            "name": "storeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "ID del transportista",
-              "title": "Carrierid"
+              "description": "ID de la tienda",
+              "title": "Storeid"
             },
-            "description": "ID del transportista"
+            "description": "ID de la tienda"
           }
         ],
         "responses": {
@@ -102,7 +145,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClientList"
+                  "$ref": "#/components/schemas/Store"
                 }
               }
             }
@@ -118,151 +161,7 @@
             }
           },
           "401": {
-            "description": "Sin token o token inválido/expirado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Cliente no asignado / acceso a otro transportista",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/carriers/{carrierId}/locations": {
-      "get": {
-        "summary": "List Carrier Locations",
-        "operationId": "list_carrier_locations_api_v1_carriers__carrierId__locations_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "carrierId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "ID del transportista",
-              "title": "Carrierid"
-            },
-            "description": "ID del transportista"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CarrierLocationList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Datos inválidos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Sin token o token inválido/expirado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Cliente no asignado / acceso a otro transportista",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/clients/{clientId}/locations": {
-      "get": {
-        "summary": "List Locations",
-        "operationId": "list_locations_api_v1_clients__clientId__locations_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "clientId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "ID del cliente",
-              "title": "Clientid"
-            },
-            "description": "ID del cliente"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocationList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Datos inválidos",
+            "description": "Sin token o token inválido/vencido",
             "content": {
               "application/json": {
                 "schema": {
@@ -272,7 +171,64 @@
             }
           },
           "404": {
-            "description": "Cliente no encontrado",
+            "description": "La tienda no existe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/stores/{storeId}/location-changes": {
+      "get": {
+        "summary": "List Location Changes",
+        "operationId": "list_location_changes_api_v2_stores__storeId__location_changes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "ID de la tienda",
+              "title": "Storeid"
+            },
+            "description": "ID de la tienda"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationChangeList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos",
             "content": {
               "application/json": {
                 "schema": {
@@ -282,7 +238,7 @@
             }
           },
           "401": {
-            "description": "Sin token o token inválido/expirado",
+            "description": "Sin token o token inválido/vencido",
             "content": {
               "application/json": {
                 "schema": {
@@ -291,8 +247,8 @@
               }
             }
           },
-          "403": {
-            "description": "Cliente no asignado / acceso a otro transportista",
+          "404": {
+            "description": "La tienda no existe",
             "content": {
               "application/json": {
                 "schema": {
@@ -314,8 +270,8 @@
         }
       },
       "post": {
-        "summary": "Create Location",
-        "operationId": "create_location_api_v1_clients__clientId__locations_post",
+        "summary": "Create Location Change",
+        "operationId": "create_location_change_api_v2_stores__storeId__location_changes_post",
         "security": [
           {
             "HTTPBearer": []
@@ -323,16 +279,16 @@
         ],
         "parameters": [
           {
-            "name": "clientId",
+            "name": "storeId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "ID del cliente",
-              "title": "Clientid"
+              "description": "ID de la tienda",
+              "title": "Storeid"
             },
-            "description": "ID del cliente"
+            "description": "ID de la tienda"
           }
         ],
         "requestBody": {
@@ -340,7 +296,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LocationCreate"
+                "$ref": "#/components/schemas/LocationChangeCreate"
               }
             }
           }
@@ -351,7 +307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Location"
+                  "$ref": "#/components/schemas/LocationChangeResult"
                 }
               }
             }
@@ -366,18 +322,8 @@
               }
             }
           },
-          "404": {
-            "description": "Cliente no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "401": {
-            "description": "Sin token o token inválido/expirado",
+            "description": "Sin token o token inválido/vencido",
             "content": {
               "application/json": {
                 "schema": {
@@ -386,8 +332,8 @@
               }
             }
           },
-          "403": {
-            "description": "Cliente no asignado / acceso a otro transportista",
+          "404": {
+            "description": "La tienda no existe",
             "content": {
               "application/json": {
                 "schema": {
@@ -412,173 +358,39 @@
   },
   "components": {
     "schemas": {
-      "Carrier": {
+      "AccessRequest": {
         "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "name": {
+          "password": {
             "type": "string",
-            "title": "Name"
-          },
-          "idNumber": {
-            "type": "string",
-            "title": "Idnumber"
-          },
-          "plate": {
-            "type": "string",
-            "title": "Plate"
-          },
-          "phone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone"
-          },
-          "createdAt": {
-            "type": "string",
-            "title": "Createdat"
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "id",
-          "name",
-          "idNumber",
-          "plate",
-          "phone",
-          "createdAt"
+          "password"
         ],
-        "title": "Carrier"
+        "title": "AccessRequest"
       },
-      "CarrierLocation": {
+      "AccessResponse": {
         "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "clientId": {
-            "type": "integer",
-            "title": "Clientid"
-          },
-          "carrierId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Carrierid"
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
-          },
-          "latitude": {
-            "type": "number",
-            "title": "Latitude"
-          },
-          "longitude": {
-            "type": "number",
-            "title": "Longitude"
-          },
-          "createdAt": {
+          "token": {
             "type": "string",
-            "title": "Createdat"
+            "title": "Token"
           },
-          "clientCode": {
+          "expiresAt": {
             "type": "string",
-            "title": "Clientcode"
-          },
-          "clientName": {
-            "type": "string",
-            "title": "Clientname"
+            "title": "Expiresat"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "clientId",
-          "carrierId",
-          "label",
-          "latitude",
-          "longitude",
-          "createdAt",
-          "clientCode",
-          "clientName"
+          "token",
+          "expiresAt"
         ],
-        "title": "CarrierLocation",
-        "description": "Ubicación con los datos del cliente, para el historial del transportista."
-      },
-      "CarrierLocationList": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/CarrierLocation"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "title": "CarrierLocationList"
-      },
-      "Client": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name"
-        ],
-        "title": "Client"
-      },
-      "ClientList": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/Client"
-            },
-            "type": "array",
-            "title": "Items"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "title": "ClientList"
+        "title": "AccessResponse"
       },
       "ErrorBody": {
         "properties": {
@@ -649,37 +461,15 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "Location": {
+      "LocationChange": {
         "properties": {
           "id": {
             "type": "integer",
             "title": "Id"
           },
-          "clientId": {
+          "storeId": {
             "type": "integer",
-            "title": "Clientid"
-          },
-          "carrierId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Carrierid"
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
+            "title": "Storeid"
           },
           "latitude": {
             "type": "number",
@@ -689,6 +479,47 @@
             "type": "number",
             "title": "Longitude"
           },
+          "accuracyM": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracym"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "gps",
+              "map"
+            ],
+            "title": "Source"
+          },
+          "previousLatitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previouslatitude"
+          },
+          "previousLongitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previouslongitude"
+          },
           "createdAt": {
             "type": "string",
             "title": "Createdat"
@@ -697,16 +528,18 @@
         "type": "object",
         "required": [
           "id",
-          "clientId",
-          "carrierId",
-          "label",
+          "storeId",
           "latitude",
           "longitude",
+          "accuracyM",
+          "source",
+          "previousLatitude",
+          "previousLongitude",
           "createdAt"
         ],
-        "title": "Location"
+        "title": "LocationChange"
       },
-      "LocationCreate": {
+      "LocationChangeCreate": {
         "properties": {
           "latitude": {
             "type": "number",
@@ -720,34 +553,44 @@
             "minimum": -180.0,
             "title": "Longitude"
           },
-          "label": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "gps",
+              "map"
+            ],
+            "title": "Source",
+            "description": "gps = ubicación actual del teléfono; map = punto elegido en el mapa"
+          },
+          "accuracyM": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
+                "type": "number",
+                "maximum": 100000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Accuracym",
+            "description": "Precisión del GPS en metros"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "latitude",
-          "longitude"
+          "longitude",
+          "source"
         ],
-        "title": "LocationCreate",
-        "description": "El transportista se toma del token de sesión, no del cuerpo."
+        "title": "LocationChangeCreate"
       },
-      "LocationList": {
+      "LocationChangeList": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/Location"
+              "$ref": "#/components/schemas/LocationChange"
             },
             "type": "array",
             "title": "Items"
@@ -757,89 +600,117 @@
         "required": [
           "items"
         ],
-        "title": "LocationList"
+        "title": "LocationChangeList"
       },
-      "LoginRequest": {
+      "LocationChangeResult": {
         "properties": {
-          "idNumber": {
-            "type": "string",
-            "maxLength": 30,
-            "title": "Idnumber"
+          "store": {
+            "$ref": "#/components/schemas/Store"
           },
-          "pin": {
+          "change": {
+            "$ref": "#/components/schemas/LocationChange"
+          }
+        },
+        "type": "object",
+        "required": [
+          "store",
+          "change"
+        ],
+        "title": "LocationChangeResult"
+      },
+      "Store": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
             "type": "string",
-            "pattern": "^[0-9]{4,8}$",
-            "title": "Pin"
+            "title": "Code"
           },
           "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Name"
           },
-          "plate": {
+          "address": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 15
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Plate"
+            "title": "Address"
           },
-          "phone": {
+          "latitude": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 30,
-                "minLength": 1
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Phone"
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "locationUpdatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locationupdatedat",
+            "description": "Fecha del último registro desde la app (UTC)"
+          },
+          "changeCount": {
+            "type": "integer",
+            "title": "Changecount",
+            "description": "Veces que se registró su ubicación desde la app"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
-          "idNumber",
-          "pin"
+          "id",
+          "code",
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "locationUpdatedAt",
+          "changeCount"
         ],
-        "title": "LoginRequest",
-        "description": "Cédula + PIN; nombre, placa y teléfono, si se envían, actualizan los datos del transportista."
+        "title": "Store"
       },
-      "LoginResponse": {
+      "StoreList": {
         "properties": {
-          "token": {
-            "type": "string",
-            "title": "Token"
-          },
-          "expiresAt": {
-            "type": "string",
-            "title": "Expiresat"
-          },
-          "carrier": {
-            "$ref": "#/components/schemas/Carrier"
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Store"
+            },
+            "type": "array",
+            "title": "Items"
           }
         },
         "type": "object",
         "required": [
-          "token",
-          "expiresAt",
-          "carrier"
+          "items"
         ],
-        "title": "LoginResponse"
+        "title": "StoreList"
       },
       "ValidationError": {
         "properties": {
@@ -885,7 +756,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "type": "http",
-        "description": "Token devuelto por POST /api/v1/auth/login",
+        "description": "Token devuelto por POST /api/v2/access",
         "scheme": "bearer"
       }
     }
