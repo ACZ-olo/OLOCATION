@@ -1,373 +1,309 @@
-import json
 import os
 import subprocess
 import sys
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app import security
 from app.config import BASE_DIR
 from app.db import connect
-from app.security import hash_pin
 
-LOGIN = {"idNumber": "1-2345-6789", "pin": "1234"}
+PASSWORD = "clave-de-prueba"
 
 
 @pytest.fixture()
 def db_file(tmp_path, monkeypatch):
     path = tmp_path / "test.db"
     monkeypatch.setenv("OLOCATION_DB_PATH", str(path))
+    monkeypatch.setenv("OLOCATION_ACCESS_PASSWORD", PASSWORD)
+    monkeypatch.setenv("OLOCATION_TOKEN_SECRET", "secreto")
     return path
 
 
 @pytest.fixture()
 def client(db_file):
-    """Clientes 1 (C2 Beta) y 2 (C1 alfa).
-    Transportista 1 (cédula 123456789, PIN 1234) asignado solo al cliente 1.
-    Transportista 2 (cédula 999, PIN 9999) asignado al cliente 2."""
-    from app.main import app
+    """Tiendas 1 (T2 Beta, con coordenada) y 2 (T1 alfa, sin coordenada)."""
+    from app.main import app, failed_attempts
 
+    failed_attempts.reset()
     with TestClient(app) as test_client:
         conn = connect(db_file)
         with conn:
-            conn.execute("INSERT INTO clients (code, name) VALUES ('C2', 'Beta'), ('C1', 'alfa')")
             conn.execute(
-                "INSERT INTO carriers (id_number, name, plate, pin_hash) VALUES"
-                " ('123456789', 'Ana', 'ABC123', ?), ('999', 'Beto', 'XYZ1', ?)",
-                (hash_pin("1234"), hash_pin("9999")),
+                "INSERT INTO stores (code, name, address, latitude, longitude) VALUES"
+                " ('T2', 'Beta', 'San José', 9.9, -84.1), ('T1', 'alfa', NULL, NULL, NULL)"
             )
-            conn.execute("INSERT INTO carrier_clients VALUES (1, 1), (2, 2)")
         conn.close()
         yield test_client
 
 
 @pytest.fixture()
 def auth(client):
-    res = client.post("/api/v1/auth/login", json=LOGIN)
+    res = client.post("/api/v2/access", json={"password": PASSWORD})
     assert res.status_code == 200
     return {"Authorization": f"Bearer {res.json()['token']}"}
 
 
-def run_seed(db_file, seed_path):
-    return subprocess.run(
-        [sys.executable, "-m", "scripts.seed", str(seed_path)],
-        cwd=BASE_DIR,
-        env={**os.environ, "OLOCATION_DB_PATH": str(db_file)},
-        capture_output=True,
-        text=True,
-    )
+def register(client, auth, store_id=1, **body):
+    payload = {"latitude": 9.93, "longitude": -84.08, "source": "gps", "accuracyM": 8.5, **body}
+    return client.post(f"/api/v2/stores/{store_id}/location-changes", json=payload, headers=auth)
 
 
-# --- Login --------------------------------------------------------------------
+# --- Acceso con contraseña general -------------------------------------------
 
 
-def test_login_returns_token_and_updates_profile(client):
-    res = client.post(
-        "/api/v1/auth/login", json={**LOGIN, "name": "Ana Mora", "plate": "new-1", "phone": "8888"}
-    )
+def test_access_returns_token(client):
+    res = client.post("/api/v2/access", json={"password": PASSWORD})
     assert res.status_code == 200
     body = res.json()
-    assert len(body["token"]) >= 32 and body["expiresAt"].endswith("Z")
-    assert body["carrier"] == {
-        "id": 1, "name": "Ana Mora", "idNumber": "123456789", "plate": "NEW1", "phone": "8888",
-        "createdAt": body["carrier"]["createdAt"],
-    }
+    assert body["token"].startswith("v2.") and body["expiresAt"].endswith("Z")
 
 
-def test_login_without_profile_keeps_data(client):
-    res = client.post("/api/v1/auth/login", json=LOGIN)
-    assert res.json()["carrier"]["name"] == "Ana" and res.json()["carrier"]["plate"] == "ABC123"
-
-
-@pytest.mark.parametrize(
-    "payload", [{**LOGIN, "pin": "0000"}, {**LOGIN, "idNumber": "555"}]
-)
-def test_login_wrong_credentials_same_error(client, payload):
-    res = client.post("/api/v1/auth/login", json=payload)
+def test_access_wrong_password(client):
+    res = client.post("/api/v2/access", json={"password": "otra"})
     assert res.status_code == 401
-    assert res.json()["error"]["code"] == "INVALID_CREDENTIALS"
+    assert res.json()["error"]["code"] == "INVALID_PASSWORD"
 
 
-def test_carrier_without_pin_cannot_login(client, db_file):
-    conn = connect(db_file)
-    with conn:
-        conn.execute("UPDATE carriers SET pin_hash = NULL WHERE id = 1")
-    conn.close()
-    assert client.post("/api/v1/auth/login", json=LOGIN).status_code == 401
-
-
-def test_lockout_after_five_failures(client):
-    codes = [
-        client.post("/api/v1/auth/login", json={**LOGIN, "pin": "0000"}).json()["error"]["code"]
-        for _ in range(5)
-    ]
-    assert codes == ["INVALID_CREDENTIALS"] * 4 + ["TOO_MANY_ATTEMPTS"]
-    res = client.post("/api/v1/auth/login", json=LOGIN)  # PIN correcto, pero bloqueado
-    assert res.status_code == 429 and "minuto" in res.json()["error"]["message"]
-
-
-def test_successful_login_resets_failures(client):
-    for _ in range(4):
-        client.post("/api/v1/auth/login", json={**LOGIN, "pin": "0000"})
-    assert client.post("/api/v1/auth/login", json=LOGIN).status_code == 200
-    for _ in range(4):
-        client.post("/api/v1/auth/login", json={**LOGIN, "pin": "0000"})
-    assert client.post("/api/v1/auth/login", json=LOGIN).status_code == 200
-
-
-@pytest.mark.parametrize(
-    "payload, field",
-    [
-        ({"idNumber": "1"}, "pin"),
-        ({**LOGIN, "pin": "12"}, "pin"),
-        ({**LOGIN, "pin": "12a4"}, "pin"),
-        ({**LOGIN, "pin": 1234}, "pin"),
-        ({**LOGIN, "idNumber": "12.34"}, "idNumber"),
-        ({**LOGIN, "extra": 1}, "extra"),
-    ],
-)
-def test_login_validation(client, payload, field):
-    res = client.post("/api/v1/auth/login", json=payload)
+def test_access_empty_password_is_validation_error(client):
+    res = client.post("/api/v2/access", json={"password": ""})
     assert res.status_code == 400
-    assert field in [d["field"] for d in res.json()["error"]["details"]]
+    assert res.json()["error"]["details"][0]["field"] == "password"
 
 
-# --- Token requerido ----------------------------------------------------------
+def test_access_locks_after_too_many_failures(client):
+    for _ in range(security.MAX_FAILED_ATTEMPTS):
+        assert client.post("/api/v2/access", json={"password": "mal"}).status_code == 401
+    res = client.post("/api/v2/access", json={"password": PASSWORD})
+    assert res.status_code == 429
+    assert res.json()["error"]["code"] == "TOO_MANY_ATTEMPTS"
+    assert int(res.headers["Retry-After"]) > 0
 
 
-@pytest.mark.parametrize(
-    "method, path",
-    [
-        ("get", "/api/v1/carriers/1/clients"),
-        ("get", "/api/v1/clients/1/locations"),
-        ("post", "/api/v1/clients/1/locations"),
-    ],
-)
+def test_access_not_configured(client, monkeypatch):
+    monkeypatch.delenv("OLOCATION_ACCESS_PASSWORD")
+    res = client.post("/api/v2/access", json={"password": PASSWORD})
+    assert res.status_code == 503
+    assert res.json()["error"]["code"] == "ACCESS_NOT_CONFIGURED"
+
+
 @pytest.mark.parametrize("headers", [{}, {"Authorization": "Bearer inventado"}])
-def test_protected_routes_require_valid_token(client, method, path, headers):
-    res = getattr(client, method)(path, headers=headers)
+def test_routes_require_token(client, headers):
+    res = client.get("/api/v2/stores", headers=headers)
     assert res.status_code == 401
     assert res.json()["error"]["code"] == "UNAUTHORIZED"
     assert res.headers["WWW-Authenticate"] == "Bearer"
 
 
-def test_expired_token_is_rejected(client, auth, db_file):
-    conn = connect(db_file)
-    with conn:
-        conn.execute("UPDATE carrier_tokens SET expires_at = '2000-01-01T00:00:00Z'")
-    conn.close()
-    assert client.get("/api/v1/carriers/1/clients", headers=auth).status_code == 401
+def test_changing_password_invalidates_tokens(client, auth, monkeypatch):
+    monkeypatch.setenv("OLOCATION_ACCESS_PASSWORD", "nueva-clave")
+    assert client.get("/api/v2/stores", headers=auth).status_code == 401
 
 
-def test_token_is_stored_hashed(client, auth, db_file):
-    conn = connect(db_file)
-    stored = conn.execute("SELECT token_hash FROM carrier_tokens").fetchone()[0]
-    pin = conn.execute("SELECT pin_hash FROM carriers WHERE id = 1").fetchone()[0]
-    conn.close()
-    assert stored not in auth["Authorization"] and "1234" not in pin
+def test_expired_token_is_rejected():
+    now = security.utcnow()
+    token, _ = security.issue_token(PASSWORD, "s", now - security.TOKEN_TTL - timedelta(seconds=1))
+    assert not security.verify_token(token, PASSWORD, "s", now)
+    fresh, _ = security.issue_token(PASSWORD, "s", now)
+    assert security.verify_token(fresh, PASSWORD, "s", now)
+    assert not security.verify_token(fresh, PASSWORD, "otro-secreto", now)
 
 
-# --- Clientes -----------------------------------------------------------------
+def test_failed_attempts_window_expires():
+    attempts = security.FailedAttempts(limit=2, window=timedelta(minutes=1))
+    attempts.record_failure("ip", now=0)
+    attempts.record_failure("ip", now=1)
+    assert attempts.retry_after("ip", now=2) == 58
+    assert attempts.retry_after("ip", now=61) == 0
 
 
-def test_list_own_clients_only_assigned(client, auth):
-    res = client.get("/api/v1/carriers/1/clients", headers=auth)
+# --- Tiendas -------------------------------------------------------------------
+
+
+def test_list_stores_sorted_by_name(client, auth):
+    res = client.get("/api/v2/stores", headers=auth)
     assert res.status_code == 200
-    assert res.json() == {"items": [{"id": 1, "code": "C2", "name": "Beta"}]}
+    assert res.json()["items"] == [
+        {"id": 2, "code": "T1", "name": "alfa", "address": None, "latitude": None,
+         "longitude": None, "locationUpdatedAt": None, "changeCount": 0},
+        {"id": 1, "code": "T2", "name": "Beta", "address": "San José", "latitude": 9.9,
+         "longitude": -84.1, "locationUpdatedAt": None, "changeCount": 0},
+    ]
 
 
-def test_cannot_list_other_carrier_clients(client, auth):
-    res = client.get("/api/v1/carriers/2/clients", headers=auth)
-    assert res.status_code == 403
-    assert res.json()["error"]["code"] == "FORBIDDEN"
+def test_get_store(client, auth):
+    res = client.get("/api/v2/stores/1", headers=auth)
+    assert res.status_code == 200 and res.json()["code"] == "T2"
 
 
-def test_carrier_locations_history(client, auth, db_file):
-    # Carlos (1) guarda en el cliente 1; Beto (2) guarda en el cliente 2; una sin autor (seed).
-    for lat in (1, 2):
-        client.post("/api/v1/clients/1/locations", json={"latitude": lat, "longitude": 0, "label": f"p{lat}"}, headers=auth)
-    beto = client.post("/api/v1/auth/login", json={"idNumber": "999", "pin": "9999"}).json()["token"]
-    client.post("/api/v1/clients/2/locations", json={"latitude": 5, "longitude": 5},
-                headers={"Authorization": f"Bearer {beto}"})
-    conn = connect(db_file)
-    with conn:
-        conn.execute("INSERT INTO client_locations (client_id, latitude, longitude) VALUES (1, 7, 7)")
-        conn.execute("DELETE FROM carrier_clients WHERE carrier_id = 1")  # cliente desasignado
-    conn.close()
-
-    res = client.get("/api/v1/carriers/1/locations", headers=auth)
-    assert res.status_code == 200
-    items = res.json()["items"]
-    assert [i["label"] for i in items] == ["p2", "p1"]  # solo las suyas, más reciente primero
-    assert items[0] | {"id": 0, "createdAt": ""} == {
-        "id": 0, "clientId": 1, "carrierId": 1, "label": "p2", "latitude": 2, "longitude": 0,
-        "createdAt": "", "clientCode": "C2", "clientName": "Beta",
-    }
+@pytest.mark.parametrize(
+    "path",
+    ["/api/v2/stores/99", "/api/v2/stores/99/location-changes"],
+)
+def test_unknown_store(client, auth, path):
+    res = client.get(path, headers=auth)
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "STORE_NOT_FOUND"
 
 
-def test_carrier_locations_empty_and_forbidden(client, auth):
-    assert client.get("/api/v1/carriers/1/locations", headers=auth).json() == {"items": []}
-    res = client.get("/api/v1/carriers/2/locations", headers=auth)
-    assert res.status_code == 403 and res.json()["error"]["code"] == "FORBIDDEN"
-    assert client.get("/api/v1/carriers/1/locations").status_code == 401
-    assert client.get("/api/v1/carriers/abc/locations", headers=auth).status_code == 400
+def test_invalid_store_id(client, auth):
+    res = client.get("/api/v2/stores/0", headers=auth)
+    assert res.status_code == 400
+    assert res.json()["error"]["details"][0]["field"] == "storeId"
 
 
-def test_global_clients_route_removed(client, auth):
-    assert client.get("/api/v1/clients", headers=auth).status_code in (404, 405)
+# --- Registro de ubicación y conteo de cambios ---------------------------------
 
 
-# --- Ubicaciones --------------------------------------------------------------
-
-
-def test_save_location_uses_carrier_from_token(client, auth, db_file):
-    res = client.post(
-        "/api/v1/clients/1/locations",
-        json={"latitude": 9.9325, "longitude": -84.0796, "label": "  Bodega  "},
-        headers=auth,
-    )
+def test_register_location_updates_store_and_counts(client, auth):
+    res = register(client, auth)
     assert res.status_code == 201
     body = res.json()
-    assert body["clientId"] == 1 and body["carrierId"] == 1 and body["label"] == "Bodega"
-    assert body["latitude"] == 9.9325 and body["createdAt"].endswith("Z")
+    change = body["change"]
+    assert change["storeId"] == 1 and change["source"] == "gps" and change["accuracyM"] == 8.5
+    assert (change["previousLatitude"], change["previousLongitude"]) == (9.9, -84.1)
+    assert change["createdAt"].endswith("Z")
+    assert body["store"]["latitude"] == 9.93 and body["store"]["longitude"] == -84.08
+    assert body["store"]["changeCount"] == 1
+    assert body["store"]["locationUpdatedAt"] == change["createdAt"]
 
-    listed = client.get("/api/v1/clients/1/locations", headers=auth).json()["items"]
-    assert [loc["id"] for loc in listed] == [body["id"]]
-
-    conn = connect(db_file)
-    row = conn.execute("SELECT client_id, carrier_id, latitude FROM client_locations").fetchone()
-    conn.close()
-    assert tuple(row) == (1, 1, 9.9325)
-
-
-def test_integer_coordinates_and_no_label_are_accepted(client, auth):
-    res = client.post(
-        "/api/v1/clients/1/locations", json={"latitude": 10, "longitude": -84}, headers=auth
-    )
-    assert res.status_code == 201
-    assert res.json()["label"] is None
+    second = register(client, auth, latitude=9.94, longitude=-84.07, source="map", accuracyM=None)
+    assert second.json()["store"]["changeCount"] == 2
+    assert second.json()["change"]["previousLatitude"] == 9.93
+    assert second.json()["change"]["accuracyM"] is None
 
 
-def test_unknown_client_returns_404(client, auth):
-    for res in (
-        client.get("/api/v1/clients/999/locations", headers=auth),
-        client.post(
-            "/api/v1/clients/999/locations", json={"latitude": 0, "longitude": 0}, headers=auth
-        ),
-    ):
-        assert res.status_code == 404
-        assert res.json()["error"]["code"] == "CLIENT_NOT_FOUND"
+def test_store_without_location_has_null_previous(client, auth):
+    change = register(client, auth, store_id=2, source="map").json()["change"]
+    assert change["previousLatitude"] is None and change["previousLongitude"] is None
 
 
-def test_client_not_assigned_returns_403(client, auth):
-    for res in (
-        client.get("/api/v1/clients/2/locations", headers=auth),
-        client.post(
-            "/api/v1/clients/2/locations", json={"latitude": 0, "longitude": 0}, headers=auth
-        ),
-    ):
-        assert res.status_code == 403
-        assert res.json()["error"]["code"] == "CLIENT_NOT_ASSIGNED"
+def test_history_most_recent_first(client, auth):
+    first = register(client, auth).json()["change"]
+    second = register(client, auth, latitude=10.0).json()["change"]
+    res = client.get("/api/v2/stores/1/location-changes", headers=auth)
+    assert [c["id"] for c in res.json()["items"]] == [second["id"], first["id"]]
+    other = client.get("/api/v2/stores/2/location-changes", headers=auth)
+    assert other.json()["items"] == []
 
 
 @pytest.mark.parametrize(
-    "payload, field",
+    "body, field",
     [
-        ({"latitude": 91, "longitude": 0}, "latitude"),
-        ({"latitude": 0, "longitude": -180.5}, "longitude"),
-        ({"latitude": "9.9", "longitude": 0}, "latitude"),
-        ({"latitude": True, "longitude": 0}, "latitude"),
-        ({"longitude": 0}, "latitude"),
-        ({"latitude": 0, "longitude": 0, "label": ""}, "label"),
-        ({"latitude": 0, "longitude": 0, "label": "x" * 101}, "label"),
-        ({"latitude": 0, "longitude": 0, "carrierId": 2}, "carrierId"),
+        ({"latitude": 91}, "latitude"),
+        ({"longitude": -181}, "longitude"),
+        ({"latitude": "9.93"}, "latitude"),
+        ({"source": "wifi"}, "source"),
+        ({"accuracyM": -1}, "accuracyM"),
+        ({"extra": 1}, "extra"),
     ],
 )
-def test_invalid_location_returns_400(client, auth, payload, field):
-    res = client.post("/api/v1/clients/1/locations", json=payload, headers=auth)
+def test_register_validation(client, auth, body, field):
+    res = register(client, auth, **body)
     assert res.status_code == 400
-    error = res.json()["error"]
-    assert error["code"] == "VALIDATION_ERROR"
-    assert field in [d["field"] for d in error["details"]]
+    assert res.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert field in [d["field"] for d in res.json()["error"]["details"]]
 
 
-def test_invalid_json_and_path_ids_return_400(client, auth):
+def test_register_requires_source(client, auth):
     res = client.post(
-        "/api/v1/clients/1/locations",
-        content="{bad json",
-        headers={**auth, "Content-Type": "application/json"},
+        "/api/v2/stores/1/location-changes", json={"latitude": 9.9, "longitude": -84.1}, headers=auth
     )
     assert res.status_code == 400
-    assert client.get("/api/v1/clients/abc/locations", headers=auth).status_code == 400
-    assert client.get("/api/v1/clients/0/locations", headers=auth).status_code == 400
-    assert client.get("/api/v1/carriers/abc/clients", headers=auth).status_code == 400
+    assert res.json()["error"]["details"][0] == {"field": "source", "message": "Campo obligatorio."}
 
 
-def test_unknown_route_uses_error_format(client):
-    res = client.get("/api/v1/nope")
+def test_register_unknown_store(client, auth):
+    res = register(client, auth, store_id=99)
     assert res.status_code == 404
-    assert res.json()["error"]["code"] == "NOT_FOUND"
 
 
-# --- Seed ---------------------------------------------------------------------
+def test_unknown_route_and_method(client, auth):
+    assert client.get("/api/v2/nada", headers=auth).json()["error"]["code"] == "NOT_FOUND"
+    res = client.delete("/api/v2/stores", headers=auth)
+    assert res.status_code == 405 and res.json()["error"]["code"] == "METHOD_NOT_ALLOWED"
 
 
-def test_seed_is_idempotent_and_replaces_assignments(db_file, tmp_path):
-    seed = tmp_path / "seed.json"
-    data = {
-        "clients": [
-            {"code": "A", "name": "Uno", "locations": [{"latitude": 1, "longitude": 2}]},
-            {"code": "B", "name": "Dos"},
-        ],
-        "carriers": [
-            {"idNumber": "1-1", "name": "Ana", "plate": "p1", "pin": "1111", "clients": ["A", "B"]}
-        ],
-    }
-    seed.write_text(json.dumps(data), encoding="utf-8")
-    for _ in range(2):
-        assert run_seed(db_file, seed).returncode == 0
+def test_cors_allows_android_app(client):
+    res = client.options(
+        "/api/v2/stores",
+        headers={"Origin": "https://localhost", "Access-Control-Request-Method": "GET"},
+    )
+    assert res.headers["access-control-allow-origin"] == "https://localhost"
 
+
+# --- Importación de tiendas desde CSV -------------------------------------------
+
+
+def run_import(db_file, csv_path):
+    return subprocess.run(
+        [sys.executable, "-m", "scripts.import_stores", str(csv_path)],
+        cwd=BASE_DIR,
+        env={**os.environ, "OLOCATION_DB_PATH": str(db_file), "PYTHONIOENCODING": "utf-8"},
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+
+def test_import_demo_csv(db_file):
+    res = run_import(db_file, BASE_DIR / "seed" / "stores.demo.csv")
+    assert res.returncode == 0, res.stderr
     conn = connect(db_file)
-    assert conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0] == 2
-    assert conn.execute("SELECT COUNT(*) FROM client_locations").fetchone()[0] == 1
-    assert tuple(conn.execute("SELECT id_number, plate FROM carriers").fetchone()) == ("11", "P1")
-    assert conn.execute("SELECT COUNT(*) FROM carrier_clients").fetchone()[0] == 2
-
-    pin_before = conn.execute("SELECT pin_hash FROM carriers").fetchone()[0]
-    data["carriers"][0]["clients"] = ["B"]
-    del data["carriers"][0]["pin"]  # existente sin pin → conserva el PIN anterior
-    seed.write_text(json.dumps(data), encoding="utf-8")
-    assert run_seed(db_file, seed).returncode == 0
-    assert conn.execute("SELECT COUNT(*) FROM carrier_clients").fetchone()[0] == 1
-    assert conn.execute("SELECT pin_hash FROM carriers").fetchone()[0] == pin_before
+    assert conn.execute("SELECT COUNT(*) FROM stores").fetchone()[0] == 15
+    assert conn.execute("SELECT COUNT(*) FROM stores WHERE latitude IS NULL").fetchone()[0] == 2
     conn.close()
 
 
-def test_demo_seed_loads_and_login_works(db_file):
-    assert run_seed(db_file, BASE_DIR / "seed" / "demo.json").returncode == 0
-    from app.main import app
+def test_import_semicolon_excel_csv_and_keeps_app_locations(db_file, tmp_path):
+    csv_file = tmp_path / "tiendas.csv"
+    csv_file.write_text(
+        "﻿Code;Name;Address;Latitude;Longitude\nA1;Tienda A;Centro;9,5;-84,5\nB1;Tienda B;;;\n",
+        encoding="utf-8",
+    )
+    assert run_import(db_file, csv_file).returncode == 0
+    conn = connect(db_file)
+    row = conn.execute("SELECT * FROM stores WHERE code = 'A1'").fetchone()
+    assert (row["latitude"], row["longitude"], row["address"]) == (9.5, -84.5, "Centro")
+    with conn:  # un transportista corrige la ubicación desde la app
+        conn.execute(
+            "INSERT INTO store_location_changes (store_id, latitude, longitude, source)"
+            " VALUES (?, 9.6, -84.6, 'gps')",
+            (row["id"],),
+        )
+        conn.execute("UPDATE stores SET latitude = 9.6, longitude = -84.6 WHERE id = ?", (row["id"],))
+    conn.close()
 
-    with TestClient(app) as c:
-        res = c.post("/api/v1/auth/login", json={"idNumber": "1-1111-1111", "pin": "1234"})
-        assert res.status_code == 200
-        headers = {"Authorization": f"Bearer {res.json()['token']}"}
-        assert len(c.get("/api/v1/carriers/1/clients", headers=headers).json()["items"]) == 4
+    csv_file.write_text(
+        "code;name;address;latitude;longitude\nA1;Tienda A2;Centro;9,5;-84,5\nB1;Tienda B;;9;-84\n",
+        encoding="utf-8",
+    )
+    res = run_import(db_file, csv_file)
+    assert res.returncode == 0, res.stderr
+    conn = connect(db_file)
+    a1 = conn.execute("SELECT * FROM stores WHERE code = 'A1'").fetchone()
+    b1 = conn.execute("SELECT * FROM stores WHERE code = 'B1'").fetchone()
+    assert a1["name"] == "Tienda A2" and (a1["latitude"], a1["longitude"]) == (9.6, -84.6)
+    assert (b1["latitude"], b1["longitude"]) == (9.0, -84.0)
+    conn.close()
 
 
 @pytest.mark.parametrize(
-    "data",
+    "content, message",
     [
-        {"clients": [{"code": "A", "name": "X", "locations": [{"latitude": 99, "longitude": 0}]}]},
-        {"carriers": [{"idNumber": "1", "name": "Ana", "plate": "P", "pin": "1111", "clients": ["NOPE"]}]},
-        {"carriers": [{"idNumber": "1", "name": "Ana", "plate": "P"}]},
-        {"carriers": [{"idNumber": "1", "name": "Ana", "plate": "P", "pin": "12"}]},
+        ("code,address\nA,x\n", "faltan columnas obligatorias: name"),
+        ("code,name,color\nA,B,rojo\n", "columnas desconocidas: color"),
+        ("code,name\nA,B\nA,C\n", "código repetido"),
+        ("code,name,latitude,longitude\nA,B,99,1\n", "latitude fuera de rango"),
+        ("code,name,latitude,longitude\nA,B,9,\n", "las dos o ninguna"),
+        ("code,name,latitude,longitude\nA,B,abc,1\n", "no es un número"),
     ],
 )
-def test_seed_rejects_invalid_file_and_loads_nothing(db_file, tmp_path, data):
-    seed = tmp_path / "bad.json"
-    seed.write_text(json.dumps({"clients": [{"code": "OK", "name": "Ok"}], **data}), encoding="utf-8")
-    assert run_seed(db_file, seed).returncode != 0
-    if db_file.exists():
-        conn = connect(db_file)
-        assert conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0] == 0
-        conn.close()
+def test_import_rejects_invalid_files(db_file, tmp_path, content, message):
+    csv_file = tmp_path / "malo.csv"
+    csv_file.write_text(content, encoding="utf-8")
+    res = run_import(db_file, csv_file)
+    assert res.returncode != 0
+    assert message in res.stderr

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#251e1f" />
+  <title>OLOCATION — OLO Soluciones Logísticas</title>
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+  <script>
+    // Aplica el tema antes de pintar para que no parpadee (lib/theme.js lo maneja después).
+    try {
+      var t = localStorage.getItem("olocation.theme");
+      if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- Íconos (estilo Material, trazo) y logo OLO reutilizables con <use href="#..."> -->
+  <svg xmlns="http://www.w3.org/2000/svg" hidden>
+    <!-- Logo OLO: las letras toman currentColor, el cuadro es siempre verde OLO -->
+    <symbol id="logo-olo" viewBox="0 0 384.86 177.16">
+      <path fill="currentColor" d="M0,29.91Q0,12.74,6.51,6.37T30.79,0h90.59q17.77,0,24.29,6.37t6.5,23.54v66q0,17.17-6.5,23.39t-24.29,6.22H30.79q-18.06,0-24.42-6.07T0,95.92Zm23.69,77h104.8V18.66H23.69Z"/>
+      <polygon fill="currentColor" points="179.31 177.16 179.31 0.07 203 0.07 203 157.32 307.12 157.32 307.12 177.16 179.31 177.16"/>
+      <path fill="currentColor" d="M232.69,29.91q0-17.17,6.51-23.54T263.47,0h90.6q17.76,0,24.28,6.37t6.51,23.54v66q0,17.17-6.51,23.39t-24.28,6.22h-90.6q-18,0-24.42-6.07t-6.36-23.54Zm23.68,77H361.18V18.66H256.37Z"/>
+      <rect fill="#00a785" x="256.38" y="18.69" width="104.8" height="88.23"/>
+    </symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9.5 5.5 4h13L20 9.5M4 9.5h16M4 9.5V20h16V9.5M9.5 20v-5.5h5V20"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+    <symbol id="i-pin-off" viewBox="0 0 24 24"><path d="M8.2 4.6A6.5 6.5 0 0 1 18.5 10c0 1.7-.6 3.4-1.5 5M14.6 17.9C13.3 19.7 12 21 12 21s-6.5-5.6-6.5-11c0-.9.2-1.8.5-2.6M3 3l18 18"/></symbol>
+    <symbol id="i-gps" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
+    <symbol id="i-tap" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V12m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2L4.3 15.2a1.5 1.5 0 0 1 2.3-1.9L9 15.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.4 2.5 12 2.5 12S6 18.5 12 18.5c1.9 0 3.5-.6 4.9-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6M3.5 4v4h4M12 7.5V12l3 2"/></symbol>
+  </svg>
+
+  <!-- =================== Acceso (contraseña general) =================== -->
+  <section id="screenAccess" class="screen screen-access" hidden>
+    <div class="access-hero">
+      <button class="icon-btn theme-toggle hero-action" type="button" aria-label="Cambiar tema">
+        <svg class="ic only-light"><use href="#i-moon"/></svg>
+        <svg class="ic only-dark"><use href="#i-sun"/></svg>
+      </button>
+      <svg class="access-logo" role="img" aria-label="OLO"><use href="#logo-olo"/></svg>
+      <p class="access-app">OLOCATION</p>
+      <p class="access-tag">Ubicación de tiendas para transportistas</p>
+    </div>
+    <div class="access-body">
+      <form id="accessForm" class="access-card" novalidate>
+        <h1>Bienvenido</h1>
+        <p class="hint">Ingresá la contraseña de acceso para continuar.</p>
+
+        <div class="field has-action">
+          <input id="accessPassword" type="password" autocomplete="current-password" placeholder=" "
+                 autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="200" required />
+          <label for="accessPassword">Contraseña</label>
+          <button id="togglePassword" class="field-action" type="button" aria-label="Mostrar contraseña" aria-pressed="false">
+            <svg class="ic eye-show"><use href="#i-eye"/></svg>
+            <svg class="ic eye-hide"><use href="#i-eye-off"/></svg>
+          </button>
+        </div>
+
+        <label class="switch-row" for="rememberDevice">
+          <span>
+            <span class="switch-title">Recordar este dispositivo</span>
+            <span class="switch-sub">No vuelve a pedir la contraseña en este teléfono</span>
+          </span>
+          <input id="rememberDevice" type="checkbox" class="switch" role="switch" checked />
+        </label>
+
+        <button id="accessSubmit" type="submit" class="btn filled block">Entrar</button>
+        <p id="accessMsg" class="form-msg" aria-live="polite"></p>
+      </form>
+      <p class="access-foot">OLO Soluciones Logísticas</p>
+    </div>
+  </section>
+
+  <!-- =================== Listado de tiendas =================== -->
+  <section id="screenStores" class="screen" hidden>
+    <header class="top-bar">
+      <svg class="bar-logo" role="img" aria-label="OLO"><use href="#logo-olo"/></svg>
+      <h1 class="bar-title">Tiendas</h1>
+      <button id="refreshStores" class="icon-btn" type="button" aria-label="Actualizar listado" title="Actualizar listado">
+        <svg class="ic"><use href="#i-refresh"/></svg>
+      </button>
+      <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
+        <svg class="ic only-light"><use href="#i-moon"/></svg>
+        <svg class="ic only-dark"><use href="#i-sun"/></svg>
+      </button>
+      <button id="lockBtn" class="icon-btn" type="button" aria-label="Salir y olvidar este dispositivo" title="Salir">
+        <svg class="ic"><use href="#i-lock"/></svg>
+      </button>
+    </header>
+    <div class="search-bar">
+      <div class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
+               enterkeyhint="search" aria-label="Buscar tienda" />
+        <button id="clearSearch" class="icon-btn small" type="button" aria-label="Borrar búsqueda" hidden>
+          <svg class="ic"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <div class="filters" role="radiogroup" aria-label="Filtrar tiendas">
+        <button class="filter on" type="button" role="radio" aria-checked="true" data-filter="all">Todas <span id="countAll"></span></button>
+        <button class="filter" type="button" role="radio" aria-checked="false" data-filter="pending">Sin registrar <span id="countPending"></span></button>
+        <button class="filter" type="button" role="radio" aria-checked="false" data-filter="done">Registradas <span id="countDone"></span></button>
+      </div>
+    </div>
+    <div id="storesBody" class="screen-body scroll">
+      <p id="storesSummary" class="section-label"></p>
+      <ul id="stores" class="list" aria-label="Tiendas"></ul>
+      <p id="storesMore" class="list-more" hidden></p>
+      <p id="storesMsg" class="form-msg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- =================== Detalle de tienda =================== -->
+  <section id="screenStore" class="screen" hidden>
+    <header class="top-bar">
+      <button class="icon-btn nav-back" type="button" aria-label="Volver">
+        <svg class="ic"><use href="#i-back"/></svg>
+      </button>
+      <h1 class="bar-title">Tienda</h1>
+      <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
+        <svg class="ic only-light"><use href="#i-moon"/></svg>
+        <svg class="ic only-dark"><use href="#i-sun"/></svg>
+      </button>
+    </header>
+    <div class="screen-body scroll">
+      <div class="card store-head">
+        <span class="lead big"><svg class="ic"><use href="#i-store"/></svg></span>
+        <div class="store-head-txt">
+          <h2 id="storeName" class="store-name"></h2>
+          <p class="store-meta"><span id="storeCode" class="code-chip"></span> <span id="storeAddress"></span></p>
+        </div>
+      </div>
+
+      <div class="card map-card">
+        <div id="storeMap" class="mini-map" aria-label="Ubicación actual de la tienda"></div>
+        <div id="storeNoMap" class="mini-map empty-map" hidden>
+          <svg class="ic"><use href="#i-pin-off"/></svg>
+          <span>Esta tienda todavía no tiene coordenada</span>
+        </div>
+        <p id="storeCoords" class="map-caption"></p>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span id="storeChangeCount" class="stat-num">0</span>
+          <span class="stat-label">cambios de ubicación</span>
+        </div>
+        <div class="stat">
+          <span id="storeUpdated" class="stat-num small">—</span>
+          <span class="stat-label">último registro</span>
+        </div>
+      </div>
+
+      <h3 class="section-label with-icon"><svg class="ic sm"><use href="#i-history"/></svg> Historial de cambios</h3>
+      <ol id="history" class="history"></ol>
+      <p id="historyMsg" class="form-msg" aria-live="polite"></p>
+    </div>
+    <div class="action-bar">
+      <button id="goLocate" class="btn filled block" type="button">
+        <svg class="ic sm"><use href="#i-pin"/></svg> Registrar ubicación
+      </button>
+    </div>
+  </section>
+
+  <!-- =================== Registrar ubicación =================== -->
+  <section id="screenLocate" class="screen" hidden>
+    <header class="top-bar">
+      <button class="icon-btn nav-back" type="button" aria-label="Volver">
+        <svg class="ic"><use href="#i-back"/></svg>
+      </button>
+      <div class="bar-titles">
+        <span class="bar-overline">Registrar ubicación</span>
+        <h1 id="locateTitle" class="bar-title">Tienda</h1>
+      </div>
+    </header>
+    <div class="map-wrap">
+      <div id="locateMap" class="map" role="application" aria-label="Mapa: tocá para elegir el punto"></div>
+      <div class="map-legend" id="mapLegend" hidden>
+        <span><i class="dot current"></i> Actual</span>
+        <span><i class="dot new"></i> Nuevo</span>
+      </div>
+    </div>
+    <div class="sheet">
+      <div class="sheet-row">
+        <span id="locateIcon" class="sheet-icon"><svg class="ic"><use href="#i-tap"/></svg></span>
+        <div class="sheet-txt">
+          <p id="locateStatus" class="sheet-title">Elegí cómo registrar la ubicación</p>
+          <p id="locateDetail" class="sheet-text">Usá tu ubicación actual o tocá el mapa en el punto exacto de la tienda.</p>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button id="useGps" class="btn tonal" type="button">
+          <svg class="ic sm"><use href="#i-gps"/></svg> <span>Mi ubicación</span>
+        </button>
+        <button id="saveLocation" class="btn filled" type="button" disabled>
+          <svg class="ic sm"><use href="#i-check"/></svg> Guardar
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Diálogo de confirmación -->
+  <div id="dialog" class="dialog-scrim" hidden>
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogBody">
+      <h2 id="dialogTitle"></h2>
+      <div id="dialogBody" class="dialog-body"></div>
+      <div class="dialog-actions">
+        <button id="dialogCancel" class="btn text" type="button">Cancelar</button>
+        <button id="dialogAccept" class="btn filled" type="button">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
