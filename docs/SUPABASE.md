@@ -1,15 +1,20 @@
-# OLOCATION v2 sobre Supabase (preparado, todavía no en uso)
+# OLOCATION v2 sobre Supabase (EN USO desde 2026‑10‑16)
 
-Hoy la app usa el backend FastAPI (`backend/`). Todo está listo para pasar a Supabase sin tocar
-las pantallas: la app habla con una **capa de datos** (`mobile/src/data/`) que tiene dos
-implementaciones con la misma interfaz:
+La app está conectada a Supabase (proyecto `defxbcwtwtokfwhggkcy`, región us-east-1). La app
+habla con una **capa de datos** (`mobile/src/data/`) que tiene dos implementaciones con la misma
+interfaz:
 
 | Proveedor | Archivo | Estado |
 |---|---|---|
-| `api` | `mobile/src/data/api.js` → FastAPI `/api/v2` | **En uso** |
-| `supabase` | `mobile/src/data/supabase.js` → funciones RPC de Supabase | Preparado |
+| `supabase` | `mobile/src/data/supabase.js` → funciones RPC de Supabase | **En uso** |
+| `api` | `mobile/src/data/api.js` → FastAPI `/api/v2` (`backend/`) | Alternativa local / pruebas |
 
-Se elige con `VITE_DATA_PROVIDER` en `mobile/.env`.
+Se elige con `VITE_DATA_PROVIDER` en `mobile/.env` (junto con `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY`). Después de cambiarlo hay que volver a compilar la app y el APK.
+
+**Estado del proyecto:** migraciones aplicadas (las 4 de `supabase/migrations/`), contraseña de
+acceso `olo2026`, y los datos migrados desde el backend local con un respaldo (15 tiendas de
+prueba y su historial). Probado de punta a punta desde el navegador y desde el APK.
 
 ## Qué hay preparado
 
@@ -20,7 +25,11 @@ Se elige con `VITE_DATA_PROVIDER` en `mobile/.env`.
 - `supabase/migrations/20261015160000_gps_only_and_backup.sql`: el registro solo acepta `gps`, y
   funciones `export_backup` / `restore_backup` con el **mismo formato JSON** que el backend
   (un respaldo descargado hoy se puede restaurar en Supabase para migrar los datos).
+- `supabase/migrations/20261016090000_fix_restore_safeupdate.sql`: en Supabase la API rechaza
+  `DELETE` sin `WHERE` (extensión *pg_safeupdate*); `restore_backup` usa `where true`.
   Aplicar las migraciones **en orden** (por nombre de archivo).
+- Para aplicar una migración nueva desde el PC (psql): connection string del botón **Connect →
+  Session pooler** del proyecto, `psql "<connection string>" -1 -v ON_ERROR_STOP=1 -f archivo.sql`.
   Se probó en PostgreSQL 17 con los roles `anon`/`authenticated` simulados: acceso
   con contraseña correcta e incorrecta, bloqueo tras 10 fallos, token inválido, listado con
   conteo, registro solo GPS, borrado de registros, respaldo (exportar, restaurar, rechazo de

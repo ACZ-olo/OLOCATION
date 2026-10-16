@@ -9,8 +9,8 @@ el dispositivo y tema claro/oscuro.
 
 - **Stack:** Vite + JavaScript (sin framework) + [Capacitor 8](https://capacitorjs.com) para Android
   + Leaflet / OpenStreetMap.
-- **Datos:** capa intercambiable en `src/data/` — hoy backend FastAPI (`../backend`), preparada
-  para Supabase (`../docs/SUPABASE.md`).
+- **Datos:** capa intercambiable en `src/data/` — **en uso: Supabase** (`../docs/SUPABASE.md`);
+  alternativa: backend FastAPI local (`../backend`).
 - **Diseño:** identidad de OLO Soluciones Logísticas (verde `#00a785`, carbón `#251e1f`,
   Open Sans + Roboto incluidas en la app).
 
@@ -105,8 +105,9 @@ npx capacitor-assets generate --android --iconBackgroundColor "#251e1f" --iconBa
 
 ## Notas
 
-- **HTTP en desarrollo:** `capacitor.config.json` permite `http://` (`cleartext`,
-  `allowMixedContent`) para hablar con el backend local. En producción usar HTTPS y quitarlos.
+- **HTTPS:** con Supabase todo va por HTTPS y `capacitor.config.json` ya no permite `http://`. Si
+  se vuelve al backend local (`VITE_DATA_PROVIDER=api` por `http://`), agregar en ese archivo
+  `"cleartext": true` dentro de `server` y `"android": { "allowMixedContent": true }`.
 - **GPS:** en el teléfono usa el plugin nativo (pide permiso de ubicación la primera vez). Al abrir
   "Registrar ubicación" empieza a medir solo: escucha el GPS hasta ~12 s y se queda con la lectura
   más precisa (para en cuanto logra ±15 m); si la precisión es peor que ±50 m lo avisa y se puede
