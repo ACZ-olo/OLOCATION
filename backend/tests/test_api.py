@@ -17,6 +17,7 @@ PASSWORD = "clave-de-prueba"
 def db_file(tmp_path, monkeypatch):
     path = tmp_path / "test.db"
     monkeypatch.setenv("OLOCATION_DB_PATH", str(path))
+    monkeypatch.setenv("OLOCATION_INVOICES_DIR", str(tmp_path / "invoices"))
     monkeypatch.setenv("OLOCATION_ACCESS_PASSWORD", PASSWORD)
     monkeypatch.setenv("OLOCATION_TOKEN_SECRET", "secreto")
     return path
@@ -127,9 +128,11 @@ def test_list_stores_sorted_by_name(client, auth):
     assert res.status_code == 200
     assert res.json()["items"] == [
         {"id": 2, "code": "T1", "name": "alfa", "address": None, "latitude": None,
-         "longitude": None, "locationUpdatedAt": None, "changeCount": 0},
+         "longitude": None, "locationUpdatedAt": None, "changeCount": 0,
+         "invoiceCount": 0, "latestInvoice": None},
         {"id": 1, "code": "T2", "name": "Beta", "address": "San José", "latitude": 9.9,
-         "longitude": -84.1, "locationUpdatedAt": None, "changeCount": 0},
+         "longitude": -84.1, "locationUpdatedAt": None, "changeCount": 0,
+         "invoiceCount": 0, "latestInvoice": None},
     ]
 
 
@@ -465,3 +468,118 @@ def test_import_rejects_invalid_files(db_file, tmp_path, content, message):
     res = run_import(db_file, csv_file)
     assert res.returncode != 0
     assert message in res.stderr
+
+
+# --- Facturas (fotos) por tienda -----------------------------------------------
+
+# Imagen PNG mínima válida (firma + relleno); invoices.validate solo mira la firma y el tamaño.
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+JPEG = b"\xff\xd8\xff" + b"\x00" * 32
+WEBP = b"RIFF" + b"\x00\x00\x00\x00" + b"WEBP" + b"\x00" * 16
+
+
+def upload_invoice(client, auth, store_id=1, content=PNG, mime="image/png", filename="factura.png"):
+    return client.post(
+        f"/api/v2/stores/{store_id}/invoices",
+        files={"image": (filename, content, mime)},
+        headers=auth,
+    )
+
+
+def test_register_invoice_updates_store_and_count(client, auth):
+    res = upload_invoice(client, auth)
+    assert res.status_code == 201
+    body = res.json()
+    invoice = body["invoice"]
+    assert invoice["storeId"] == 1 and invoice["mimeType"] == "image/png"
+    assert invoice["byteSize"] == len(PNG) and invoice["createdAt"].endswith("Z")
+    assert invoice["imageUrl"] == f"/api/v2/stores/1/invoices/{invoice['id']}/image"
+    store = body["store"]
+    assert store["invoiceCount"] == 1
+    assert store["latestInvoice"]["id"] == invoice["id"]
+
+    second = upload_invoice(client, auth, content=JPEG, mime="image/jpeg", filename="f2.jpg")
+    assert second.json()["store"]["invoiceCount"] == 2
+    assert second.json()["store"]["latestInvoice"]["id"] == second.json()["invoice"]["id"]
+
+
+def test_register_invoice_accepts_webp(client, auth):
+    res = upload_invoice(client, auth, content=WEBP, mime="image/webp", filename="f.webp")
+    assert res.status_code == 201 and res.json()["invoice"]["mimeType"] == "image/webp"
+
+
+def test_latest_invoice_shown_on_store_list_and_detail(client, auth):
+    invoice = upload_invoice(client, auth).json()["invoice"]
+    detail = client.get("/api/v2/stores/1", headers=auth).json()
+    assert detail["latestInvoice"]["id"] == invoice["id"] and detail["invoiceCount"] == 1
+    listed = {s["id"]: s for s in client.get("/api/v2/stores", headers=auth).json()["items"]}
+    assert listed[1]["latestInvoice"]["id"] == invoice["id"]
+    assert listed[2]["latestInvoice"] is None and listed[2]["invoiceCount"] == 0
+
+
+def test_list_invoices_most_recent_first(client, auth):
+    first = upload_invoice(client, auth).json()["invoice"]
+    second = upload_invoice(client, auth).json()["invoice"]
+    items = client.get("/api/v2/stores/1/invoices", headers=auth).json()["items"]
+    assert [i["id"] for i in items] == [second["id"], first["id"]]
+    assert client.get("/api/v2/stores/2/invoices", headers=auth).json()["items"] == []
+
+
+def test_get_invoice_image_returns_bytes(client, auth):
+    invoice = upload_invoice(client, auth).json()["invoice"]
+    res = client.get(invoice["imageUrl"], headers=auth)
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("image/png")
+    assert res.content == PNG
+
+
+def test_delete_invoice_lowers_count_and_updates_latest(client, auth):
+    first = upload_invoice(client, auth).json()["invoice"]
+    second = upload_invoice(client, auth).json()["invoice"]
+    res = client.delete(f"/api/v2/stores/1/invoices/{second['id']}", headers=auth)
+    assert res.status_code == 200
+    store = res.json()["store"]
+    assert store["invoiceCount"] == 1 and store["latestInvoice"]["id"] == first["id"]
+    # la imagen borrada ya no se puede descargar
+    assert client.get(second["imageUrl"], headers=auth).status_code == 404
+    # borrar la última deja la tienda sin factura
+    store = client.delete(f"/api/v2/stores/1/invoices/{first['id']}", headers=auth).json()["store"]
+    assert store["invoiceCount"] == 0 and store["latestInvoice"] is None
+
+
+@pytest.mark.parametrize(
+    "content, mime",
+    [
+        (b"no soy imagen", "image/png"),  # contenido que no coincide con el tipo
+        (PNG, "application/pdf"),           # tipo no permitido
+        (b"", "image/png"),                  # vacío
+    ],
+)
+def test_register_invoice_rejects_invalid_image(client, auth, content, mime):
+    res = upload_invoice(client, auth, content=content, mime=mime)
+    assert res.status_code == 400 and res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_register_invoice_requires_file(client, auth):
+    res = client.post("/api/v2/stores/1/invoices", headers=auth)
+    assert res.status_code == 400 and res.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_invoice_endpoints_unknown_store(client, auth):
+    assert upload_invoice(client, auth, store_id=99).status_code == 404
+    assert client.get("/api/v2/stores/99/invoices", headers=auth).status_code == 404
+
+
+def test_delete_unknown_or_foreign_invoice(client, auth):
+    invoice = upload_invoice(client, auth).json()["invoice"]
+    for store_id, invoice_id in [(1, 999), (2, invoice["id"])]:
+        res = client.delete(f"/api/v2/stores/{store_id}/invoices/{invoice_id}", headers=auth)
+        assert res.status_code == 404 and res.json()["error"]["code"] == "INVOICE_NOT_FOUND"
+
+
+def test_invoice_routes_require_token(client, auth):
+    invoice = upload_invoice(client, auth).json()["invoice"]
+    assert client.get("/api/v2/stores/1/invoices").status_code == 401
+    assert upload_invoice(client, {}).status_code == 401
+    assert client.get(invoice["imageUrl"]).status_code == 401
+    assert client.delete(f"/api/v2/stores/1/invoices/{invoice['id']}").status_code == 401

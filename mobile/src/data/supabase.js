@@ -32,6 +32,7 @@ const KNOWN_CODES = [
   "TOO_MANY_ATTEMPTS",
   "STORE_NOT_FOUND",
   "CHANGE_NOT_FOUND",
+  "INVOICE_NOT_FOUND",
   "VALIDATION_ERROR",
 ];
 
@@ -54,6 +55,17 @@ async function rpc(name, params) {
   throw new DataError("UNKNOWN", error.message || "Error de Supabase.");
 }
 
+const toInvoice = (row) =>
+  row
+    ? {
+        id: row.id,
+        storeId: row.store_id,
+        mimeType: row.mime_type,
+        byteSize: row.byte_size,
+        createdAt: row.created_at,
+      }
+    : null;
+
 const toStore = (row) => ({
   id: row.id,
   code: row.code,
@@ -63,6 +75,8 @@ const toStore = (row) => ({
   longitude: row.longitude,
   locationUpdatedAt: row.location_updated_at,
   changeCount: Number(row.change_count),
+  invoiceCount: Number(row.invoice_count ?? 0),
+  latestInvoice: toInvoice(row.latest_invoice),
 });
 
 const toChange = (row) => ({
@@ -124,4 +138,42 @@ export async function deleteLocationChange(token, storeId, changeId) {
     p_change_id: changeId,
   });
   return { store: toStore(data.store) };
+}
+
+// --- Facturas (fotos) ----------------------------------------------------------
+
+export async function listInvoices(token, storeId) {
+  return (await rpc("list_store_invoices", { p_token: token, p_store_id: storeId })).map(toInvoice);
+}
+
+export async function registerInvoice(token, storeId, { base64, mimeType }) {
+  const data = await rpc("register_store_invoice", {
+    p_token: token,
+    p_store_id: storeId,
+    p_mime_type: mimeType,
+    p_image_base64: base64,
+  });
+  return { store: toStore(data.store), invoice: toInvoice(data.invoice) };
+}
+
+export async function deleteInvoice(token, storeId, invoiceId) {
+  const data = await rpc("delete_store_invoice", {
+    p_token: token,
+    p_store_id: storeId,
+    p_invoice_id: invoiceId,
+  });
+  return { store: toStore(data.store) };
+}
+
+/** La imagen llega en base64 desde la RPC; se arma una data URL para usar en <img src>. */
+export async function getInvoiceImage(token, storeId, invoiceId) {
+  const data = await rpc("get_store_invoice_image", {
+    p_token: token,
+    p_store_id: storeId,
+    p_invoice_id: invoiceId,
+  });
+  // encode(..., 'base64') de PostgreSQL mete saltos de línea cada 76 caracteres; una data URL
+  // con esos saltos no se renderiza en <img>. Se quitan todos los espacios/saltos.
+  const base64 = String(data.imageBase64 || "").replace(/\s/g, "");
+  return { url: `data:${data.mimeType};base64,${base64}`, revoke: () => {} };
 }

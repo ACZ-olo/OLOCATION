@@ -20,6 +20,19 @@ class AccessResponse(BaseModel):
     expiresAt: str
 
 
+class Invoice(BaseModel):
+    id: int
+    storeId: int
+    mimeType: str = Field(description="Tipo de la imagen: image/jpeg, image/png o image/webp")
+    byteSize: int | None = Field(description="Tamaño de la imagen en bytes")
+    imageUrl: str = Field(description="Ruta para descargar la imagen (relativa a la API)")
+    createdAt: str = Field(description="Fecha y hora en que se registró la factura (UTC)")
+
+
+class InvoiceList(BaseModel):
+    items: list[Invoice]
+
+
 class Store(BaseModel):
     id: int
     code: str
@@ -29,6 +42,8 @@ class Store(BaseModel):
     longitude: float | None
     locationUpdatedAt: str | None = Field(description="Fecha del último registro desde la app (UTC)")
     changeCount: int = Field(description="Veces que se registró su ubicación desde la app")
+    invoiceCount: int = Field(default=0, description="Cantidad de facturas registradas")
+    latestInvoice: Invoice | None = Field(default=None, description="La factura más reciente, o null")
 
 
 class StoreList(BaseModel):
@@ -65,6 +80,15 @@ class LocationChangeCreate(BaseModel):
 class LocationChangeResult(BaseModel):
     store: Store
     change: LocationChange
+
+
+class InvoiceCreateResult(BaseModel):
+    store: Store
+    invoice: Invoice
+
+
+class InvoiceDeleteResult(BaseModel):
+    store: Store = Field(description="La tienda después de borrar la factura")
 
 
 class LocationChangeDeleteResult(BaseModel):

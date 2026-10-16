@@ -3,7 +3,8 @@ import sqlite3
 _STORE_SELECT = (
     "SELECT s.id, s.code, s.name, s.address, s.latitude, s.longitude,"
     " s.location_updated_at AS locationUpdatedAt,"
-    " (SELECT COUNT(*) FROM store_location_changes c WHERE c.store_id = s.id) AS changeCount"
+    " (SELECT COUNT(*) FROM store_location_changes c WHERE c.store_id = s.id) AS changeCount,"
+    " (SELECT COUNT(*) FROM store_invoices v WHERE v.store_id = s.id) AS invoiceCount"
     " FROM stores s"
 )
 
@@ -11,6 +12,11 @@ _CHANGE_COLUMNS = (
     "id, store_id AS storeId, latitude, longitude, accuracy_m AS accuracyM, source,"
     " previous_latitude AS previousLatitude, previous_longitude AS previousLongitude,"
     " created_at AS createdAt"
+)
+
+_INVOICE_COLUMNS = (
+    "id, store_id AS storeId, image_path AS imagePath, mime_type AS mimeType,"
+    " byte_size AS byteSize, created_at AS createdAt"
 )
 
 
@@ -166,3 +172,60 @@ def create_location_change(
             (latitude, longitude, change["createdAt"], store_id),
         )
     return change
+
+
+# --- Facturas (fotos) ----------------------------------------------------------
+
+
+def latest_invoice(conn: sqlite3.Connection, store_id: int) -> dict | None:
+    """La factura más reciente de una tienda (o None si no tiene ninguna)."""
+    row = conn.execute(
+        f"SELECT {_INVOICE_COLUMNS} FROM store_invoices WHERE store_id = ?"
+        " ORDER BY created_at DESC, id DESC LIMIT 1",
+        (store_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def list_invoices(conn: sqlite3.Connection, store_id: int) -> list[dict]:
+    """Todas las facturas de una tienda, de la más reciente a la más antigua."""
+    rows = conn.execute(
+        f"SELECT {_INVOICE_COLUMNS} FROM store_invoices"
+        " WHERE store_id = ? ORDER BY created_at DESC, id DESC",
+        (store_id,),
+    )
+    return [dict(row) for row in rows]
+
+
+def get_invoice(conn: sqlite3.Connection, store_id: int, invoice_id: int) -> dict | None:
+    row = conn.execute(
+        f"SELECT {_INVOICE_COLUMNS} FROM store_invoices WHERE id = ? AND store_id = ?",
+        (invoice_id, store_id),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def create_invoice(
+    conn: sqlite3.Connection,
+    store_id: int,
+    image_path: str,
+    mime_type: str,
+    byte_size: int,
+) -> dict:
+    """Registra una factura ya guardada en disco. Devuelve la fila creada."""
+    with conn:
+        cursor = conn.execute(
+            "INSERT INTO store_invoices (store_id, image_path, mime_type, byte_size)"
+            " VALUES (?, ?, ?, ?)",
+            (store_id, image_path, mime_type, byte_size),
+        )
+        return dict(
+            conn.execute(
+                f"SELECT {_INVOICE_COLUMNS} FROM store_invoices WHERE id = ?", (cursor.lastrowid,)
+            ).fetchone()
+        )
+
+
+def delete_invoice(conn: sqlite3.Connection, invoice_id: int) -> None:
+    with conn:
+        conn.execute("DELETE FROM store_invoices WHERE id = ?", (invoice_id,))

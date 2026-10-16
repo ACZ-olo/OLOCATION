@@ -27,6 +27,11 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   (un respaldo descargado hoy se puede restaurar en Supabase para migrar los datos).
 - `supabase/migrations/20261016090000_fix_restore_safeupdate.sql`: en Supabase la API rechaza
   `DELETE` sin `WHERE` (extensión *pg_safeupdate*); `restore_backup` usa `where true`.
+- `supabase/migrations/20261016100000_invoices.sql`: **facturas (fotos) por tienda**. Tabla
+  `store_invoices` con la imagen en una columna `bytea`, y 4 RPC (`list_store_invoices`,
+  `register_store_invoice`, `get_store_invoice_image`, `delete_store_invoice`). `store_json`
+  ahora incluye `invoice_count` y `latest_invoice`. La imagen viaja en **base64** por las RPC
+  (no se usa Supabase Storage, ver abajo).
   Aplicar las migraciones **en orden** (por nombre de archivo).
 - Para aplicar una migración nueva desde el PC (psql): connection string del botón **Connect →
   Session pooler** del proyecto, `psql "<connection string>" -1 -v ON_ERROR_STOP=1 -f archivo.sql`.
@@ -49,6 +54,15 @@ proteja de verdad los datos:
   se guarda su SHA‑256 en `private.access_sessions`); las demás funciones exigen ese token.
 - 10 contraseñas incorrectas en 15 minutos desde la misma IP bloquean el acceso un rato.
 - El esquema `private` no se expone en la API.
+
+### Facturas: por qué en la base y no en Storage
+
+Las fotos de factura se guardan como `bytea` en `store_invoices` y se suben/descargan en base64 a
+través de las RPC (`register_store_invoice` / `get_store_invoice_image`). No se usa Supabase
+Storage porque un bucket se protege con Supabase Auth, y esta app **no** usa Auth: valida su propio
+token. Pasando las imágenes por RPC, quedan bajo el mismo candado (`private.check_token`) que el
+resto de los datos, sin exponer un bucket público. El límite por imagen es 12 MB, igual que el
+backend FastAPI. (El backend FastAPI, en cambio, guarda la imagen en disco en `data/invoices/`.)
 
 ## Pasos para activarlo
 
