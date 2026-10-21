@@ -112,6 +112,12 @@ function sameCode(storeCode, invoiceCode) {
   return digits.length >= 5 && noZeros(digits) === noZeros(invoiceCode);
 }
 
+/** El código difiere en un solo dígito (el OCR leyó mal, se comió o agregó un número). */
+function nearCode(storeCode, invoiceCode) {
+  const digits = storeCode.replace(/\D/g, "");
+  return digits.length >= 5 && withinDistance(noZeros(digits), noZeros(invoiceCode), 1);
+}
+
 /**
  * Tiendas que coinciden con la factura, de mejor a peor.
  * `invoice` es el resultado de parseInvoice(). Devuelve [{ store, score, byCode, byPlace }].
@@ -140,17 +146,21 @@ export function matchInvoice(invoice, stores) {
     const byCode = invoiceCode
       ? sameCode(code, invoiceCode)
       : code.length >= 3 && (inText.exact.has(code) || textNumbers.has(noZeros(code.replace(/\D/g, ""))));
+    const byNearCode = !byCode && !!invoiceCode && nearCode(code, invoiceCode);
     const byName = coverage(name, inFields);
-    if (!byCode && byName < MIN_COVERAGE) continue;
+    if (!byCode && !byNearCode && byName < MIN_COVERAGE) continue;
     // Sucursal: las palabras de la tienda que no son el nombre del cliente ("Pital" en
     // "Novagro Pital") tienen que estar en el lugar de entrega.
     const branch = all.filter((w) => !inName(w));
     const place = placeText && branch.length ? coverage(branch, inPlace) : 0;
-    const score = (byCode ? 2 : 0) + byName + 0.8 * place + 0.2 * coverage(address, inAddress);
-    results.push({ store, score, byCode, byPlace: place >= 0.5 });
+    // Un código casi igual va antes que cualquier coincidencia solo por nombre (que suma hasta 2).
+    const score =
+      (byCode ? 4 : byNearCode ? 2.5 : 0) + byName + 0.8 * place + 0.2 * coverage(address, inAddress);
+    results.push({ store, score, byCode, byNearCode, byPlace: place >= 0.5 });
   }
-  // El código manda: si alguna tienda tiene el código de la factura, solo se muestran esas
-  // (el nombre en la app puede ser distinto al de la factura). Por nombre, solo si no hay ninguna.
+  // El código manda: si alguna tienda tiene exactamente el código de la factura, se muestra solo
+  // esa (el nombre en la app puede ser distinto al de la factura). Si no, primero las de código
+  // casi igual y después las que coinciden por nombre.
   const byCode = results.filter((r) => r.byCode);
   return (byCode.length ? byCode : results).sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS);
 }

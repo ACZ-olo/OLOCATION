@@ -19,7 +19,7 @@ const FILTERS = {
 let filter = "all";
 let renderedKey = "";
 // Resultado del último escaneo de factura: mientras exista, la lista muestra solo esas tiendas.
-let scan = null; // { seq, ids, byCode, invoice }
+let scan = null; // { seq, ids, byCode, nearCode, invoice }
 let scanSeq = 0;
 let scanning = false;
 // Texto de búsqueda precalculado por tienda (sin tildes, en minúsculas).
@@ -120,8 +120,10 @@ function renderScan() {
   $("scanInfo").textContent = !items.length
     ? "No se encontró ninguna tienda con el código ni el nombre de esta factura."
     : !scan.byCode
-      ? `${code ? `Ninguna tienda tiene el código ${code}. ` : "No se pudo leer el código. "}` +
-        "Se buscó por nombre: revisá bien que sea la tienda correcta."
+      ? `${code ? `Ninguna tienda tiene exactamente el código ${code}. ` : "No se pudo leer el código. "}` +
+        (scan.nearCode
+          ? "Primero van las de código parecido (puede que se haya leído mal un número) y después las del mismo nombre: comparalo con la factura."
+          : "Se buscó por nombre: revisá bien que sea la tienda correcta.")
       : items.length === 1
         ? "Esta es la tienda con el código de la factura. Tocala para registrar la ubicación."
         : "Hay varias sucursales con este código. La primera es la del lugar de entrega.";
@@ -159,6 +161,7 @@ async function scanInvoice() {
       seq: ++scanSeq,
       ids: matches.map((m) => m.store.id),
       byCode: matches.some((m) => m.byCode),
+      nearCode: matches.some((m) => m.byNearCode),
       invoice,
     };
     render();
