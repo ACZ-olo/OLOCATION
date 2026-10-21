@@ -1,4 +1,5 @@
-// Tomar una foto de factura con la cámara o elegirla de la galería.
+// Tomar una foto de factura con la cámara o elegirla de la galería (para escanearla con OCR,
+// ver lib/ocr.js; la foto no se guarda).
 // En Android usa el plugin nativo de Capacitor (pide el permiso correspondiente); en el
 // navegador usa un <input type="file"> (con capture="environment" para abrir la cámara trasera).
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -13,9 +14,9 @@ export class PhotoError extends Error {
 
 const native = Capacitor.isNativePlatform();
 
-/** Tipos aceptados (coinciden con el backend y Supabase). */
+/** Tipos de imagen aceptados. */
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
-const MAX_BYTES = 12 * 1024 * 1024; // 12 MB, igual que el servidor
+const MAX_BYTES = 12 * 1024 * 1024; // 12 MB
 
 const EXT_MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
 

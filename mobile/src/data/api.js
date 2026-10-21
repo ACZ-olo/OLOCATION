@@ -7,9 +7,7 @@ const TIMEOUT_MS = 60000; // generoso: restaurar un respaldo grande puede tardar
 async function request(path, { token, method = "GET", body } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  // FormData se envía tal cual (el navegador pone el Content-Type con su boundary); el resto, JSON.
-  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
+  if (body !== undefined) headers["Content-Type"] = "application/json";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -18,7 +16,7 @@ async function request(path, { token, method = "GET", body } = {}) {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
   } catch {
@@ -44,7 +42,6 @@ async function request(path, { token, method = "GET", body } = {}) {
       UNAUTHORIZED: "UNAUTHORIZED",
       STORE_NOT_FOUND: "STORE_NOT_FOUND",
       CHANGE_NOT_FOUND: "CHANGE_NOT_FOUND",
-      INVOICE_NOT_FOUND: "INVOICE_NOT_FOUND",
       VALIDATION_ERROR: "VALIDATION_ERROR",
       ACCESS_NOT_CONFIGURED: "NOT_CONFIGURED",
     }[err.code] || "UNKNOWN";
@@ -80,50 +77,4 @@ export async function restoreBackup(token, backup) {
 
 export async function deleteLocationChange(token, storeId, changeId) {
   return request(`/stores/${storeId}/location-changes/${changeId}`, { token, method: "DELETE" });
-}
-
-// --- Facturas (fotos) ----------------------------------------------------------
-
-/** base64 (sin prefijo data:) → Blob, para subir la imagen como multipart. */
-function base64ToBlob(base64, mimeType) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mimeType });
-}
-
-const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-
-export async function listInvoices(token, storeId) {
-  return (await request(`/stores/${storeId}/invoices`, { token })).items;
-}
-
-export async function registerInvoice(token, storeId, { base64, mimeType }) {
-  const form = new FormData();
-  form.append("image", base64ToBlob(base64, mimeType), `factura.${EXT[mimeType] || "jpg"}`);
-  // No se fija Content-Type: el navegador agrega el boundary de multipart.
-  return request(`/stores/${storeId}/invoices`, { token, method: "POST", body: form });
-}
-
-export async function deleteInvoice(token, storeId, invoiceId) {
-  return request(`/stores/${storeId}/invoices/${invoiceId}`, { token, method: "DELETE" });
-}
-
-/** Descarga la imagen con el token y devuelve un object URL ({ url, revoke }). */
-export async function getInvoiceImage(token, storeId, invoiceId) {
-  let res;
-  try {
-    res = await fetch(`${API_BASE}/stores/${storeId}/invoices/${invoiceId}/image`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    throw new DataError("NETWORK", "No hay conexión con el servidor. Revisá tu internet.");
-  }
-  if (!res.ok) {
-    if (res.status === 401) throw new DataError("UNAUTHORIZED", "El acceso venció. Ingresá la contraseña de nuevo.");
-    if (res.status === 404) throw new DataError("INVOICE_NOT_FOUND", "La factura ya no está disponible.");
-    throw new DataError("UNKNOWN", `No se pudo cargar la imagen (HTTP ${res.status}).`);
-  }
-  const url = URL.createObjectURL(await res.blob());
-  return { url, revoke: () => URL.revokeObjectURL(url) };
 }

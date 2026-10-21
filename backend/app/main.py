@@ -2,15 +2,15 @@ import sqlite3
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Path, Request, UploadFile
+from fastapi import Depends, FastAPI, Path, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import config, invoices, repository, security
+from app import config, repository, security
 from app.db import connect, get_connection, migrate
 from app.schemas import (
     BACKUP_FORMAT,
@@ -20,10 +20,6 @@ from app.schemas import (
     Backup,
     RestoreResult,
     ErrorResponse,
-    Invoice,
-    InvoiceCreateResult,
-    InvoiceDeleteResult,
-    InvoiceList,
     LocationChangeCreate,
     LocationChangeDeleteResult,
     LocationChangeList,
@@ -54,7 +50,6 @@ app.add_middleware(
 Conn = Annotated[sqlite3.Connection, Depends(get_connection)]
 StoreId = Annotated[int, Path(alias="storeId", ge=1, description="ID de la tienda")]
 ChangeId = Annotated[int, Path(alias="changeId", ge=1, description="ID del registro de ubicación")]
-InvoiceId = Annotated[int, Path(alias="invoiceId", ge=1, description="ID de la factura")]
 
 failed_attempts = security.FailedAttempts()
 
@@ -175,28 +170,6 @@ def _require_store(conn: sqlite3.Connection, store_id: int) -> dict:
     return store
 
 
-def _invoice_out(row: dict) -> dict:
-    """Fila de la base → factura de la API, con la URL para descargar la imagen."""
-    return {
-        "id": row["id"],
-        "storeId": row["storeId"],
-        "mimeType": row["mimeType"],
-        "byteSize": row["byteSize"],
-        "imageUrl": f"/api/v2/stores/{row['storeId']}/invoices/{row['id']}/image",
-        "createdAt": row["createdAt"],
-    }
-
-
-def _store_out(conn: sqlite3.Connection, store: dict) -> dict:
-    """Agrega a la tienda su factura más reciente (o None)."""
-    latest = repository.latest_invoice(conn, store["id"])
-    return {**store, "latestInvoice": _invoice_out(latest) if latest else None}
-
-
-def _stores_out(conn: sqlite3.Connection, stores: list[dict]) -> list[dict]:
-    return [_store_out(conn, store) for store in stores]
-
-
 @app.post(
     "/api/v2/access",
     response_model=AccessResponse,
@@ -228,7 +201,7 @@ def access(body: AccessRequest, request: Request):
 
 @app.get("/api/v2/stores", response_model=StoreList, responses=AUTH_ERRORS, dependencies=[Access])
 def list_stores(conn: Conn):
-    return {"items": _stores_out(conn, repository.list_stores(conn))}
+    return {"items": repository.list_stores(conn)}
 
 
 @app.get(
@@ -238,7 +211,7 @@ def list_stores(conn: Conn):
     dependencies=[Access],
 )
 def get_store(store_id: StoreId, conn: Conn):
-    return _store_out(conn, _require_store(conn, store_id))
+    return _require_store(conn, store_id)
 
 
 @app.get(
@@ -264,7 +237,7 @@ def create_location_change(store_id: StoreId, body: LocationChangeCreate, conn: 
     change = repository.create_location_change(
         conn, store_id, body.latitude, body.longitude, body.source, body.accuracyM
     )
-    return {"store": _store_out(conn, repository.get_store(conn, store_id)), "change": change}
+    return {"store": repository.get_store(conn, store_id), "change": change}
 
 
 @app.delete(
@@ -285,99 +258,7 @@ def delete_location_change(store_id: StoreId, change_id: ChangeId, conn: Conn):
             404, "CHANGE_NOT_FOUND", f"La tienda {store_id} no tiene un registro con id {change_id}."
         )
     repository.delete_location_change(conn, store_id, change)
-    return {"store": _store_out(conn, repository.get_store(conn, store_id))}
-
-
-# --- Facturas (fotos) por tienda ----------------------------------------------
-
-
-@app.get(
-    "/api/v2/stores/{storeId}/invoices",
-    response_model=InvoiceList,
-    responses={**BAD_REQUEST, **AUTH_ERRORS, **NOT_FOUND},
-    dependencies=[Access],
-    summary="Listar las facturas de una tienda (más reciente primero)",
-)
-def list_invoices(store_id: StoreId, conn: Conn):
-    _require_store(conn, store_id)
-    return {"items": [_invoice_out(row) for row in repository.list_invoices(conn, store_id)]}
-
-
-@app.post(
-    "/api/v2/stores/{storeId}/invoices",
-    response_model=InvoiceCreateResult,
-    status_code=201,
-    responses={
-        **BAD_REQUEST,
-        **AUTH_ERRORS,
-        **NOT_FOUND,
-        413: {"model": ErrorResponse, "description": "La imagen es demasiado grande"},
-    },
-    dependencies=[Access],
-    summary="Registrar una factura (subir la foto)",
-)
-def create_invoice(store_id: StoreId, conn: Conn, image: UploadFile = File(...)):
-    _require_store(conn, store_id)
-    data = image.file.read()  # sync: el endpoint corre en el threadpool, igual que la conexión
-    try:
-        image_path, mime, size = invoices.save(store_id, data, image.content_type or "")
-    except invoices.InvoiceImageError as exc:
-        status = 413 if len(data) > invoices.MAX_BYTES else 400
-        raise ApiError(status, "VALIDATION_ERROR", str(exc)) from None
-    row = repository.create_invoice(conn, store_id, image_path, mime, size)
-    return {
-        "store": _store_out(conn, repository.get_store(conn, store_id)),
-        "invoice": _invoice_out(row),
-    }
-
-
-@app.get(
-    "/api/v2/stores/{storeId}/invoices/{invoiceId}/image",
-    responses={
-        **BAD_REQUEST,
-        **AUTH_ERRORS,
-        200: {"content": {"image/*": {}}, "description": "La imagen de la factura"},
-        404: {"model": ErrorResponse, "description": "La tienda o la factura no existe"},
-    },
-    dependencies=[Access],
-    summary="Descargar la imagen de una factura",
-)
-def get_invoice_image(store_id: StoreId, invoice_id: InvoiceId, conn: Conn):
-    _require_store(conn, store_id)
-    row = repository.get_invoice(conn, store_id, invoice_id)
-    if row is None:
-        raise ApiError(
-            404, "INVOICE_NOT_FOUND", f"La tienda {store_id} no tiene una factura con id {invoice_id}."
-        )
-    try:
-        path = invoices.path_for(row["imagePath"])
-        data = path.read_bytes()
-    except (invoices.InvoiceImageError, OSError):
-        raise ApiError(404, "INVOICE_NOT_FOUND", "La imagen de la factura ya no está disponible.") from None
-    return Response(content=data, media_type=row["mimeType"])
-
-
-@app.delete(
-    "/api/v2/stores/{storeId}/invoices/{invoiceId}",
-    response_model=InvoiceDeleteResult,
-    responses={
-        **BAD_REQUEST,
-        **AUTH_ERRORS,
-        404: {"model": ErrorResponse, "description": "La tienda o la factura no existe"},
-    },
-    dependencies=[Access],
-    summary="Borrar una factura",
-)
-def delete_invoice(store_id: StoreId, invoice_id: InvoiceId, conn: Conn):
-    _require_store(conn, store_id)
-    row = repository.get_invoice(conn, store_id, invoice_id)
-    if row is None:
-        raise ApiError(
-            404, "INVOICE_NOT_FOUND", f"La tienda {store_id} no tiene una factura con id {invoice_id}."
-        )
-    repository.delete_invoice(conn, invoice_id)
-    invoices.remove(row["imagePath"])
-    return {"store": _store_out(conn, repository.get_store(conn, store_id))}
+    return {"store": repository.get_store(conn, store_id)}
 
 
 @app.get(

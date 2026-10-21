@@ -1,18 +1,13 @@
 // Detalle de una tienda: coordenada actual, conteo de cambios e historial con fechas.
 import L from "leaflet";
-import {
-  deleteLocationChange,
-  getInvoiceImage,
-  listLocationChanges,
-  registerInvoice,
-} from "../data/index.js";
+import { deleteLocationChange, listLocationChanges } from "../data/index.js";
 import { getToken } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
 import { go } from "../router.js";
 import { findStore, loadStores, updateStore } from "../state.js";
-import { handleDataError, openImageViewer, pickInvoicePhoto } from "./common.js";
+import { handleDataError } from "./common.js";
 
 let map;
 let marker;
@@ -20,9 +15,6 @@ let storeId = null;
 let requestSeq = 0;
 let changes = []; // historial mostrado (más reciente primero)
 let deleting = false;
-let savingInvoice = false;
-let invoiceSeq = 0; // para ignorar cargas de imagen de una tienda que ya cambió
-let latestImage = null; // { url, revoke } de la factura más reciente mostrada
 
 function ensureMap() {
   if (map) return;
@@ -59,40 +51,6 @@ function renderStore(store) {
     if (marker) marker.setLatLng(latLng);
     else marker = L.marker(latLng, { icon: currentPin(), interactive: false }).addTo(map);
     setTimeout(() => map.invalidateSize(), 50);
-  }
-  renderInvoice(store);
-}
-
-function clearLatestImage() {
-  if (latestImage) latestImage.revoke?.();
-  latestImage = null;
-  $("storeInvoiceImage").removeAttribute("src");
-  $("storeInvoiceImageBtn").classList.remove("ready");
-}
-
-/** Muestra la factura más reciente de la tienda (o el estado vacío). */
-async function renderInvoice(store) {
-  const seq = ++invoiceSeq;
-  const latest = store.latestInvoice;
-  $("storeInvoiceCount").textContent = store.invoiceCount || 0;
-  $("goInvoices").hidden = (store.invoiceCount || 0) <= 1;
-  $("storeInvoice").hidden = !latest;
-  $("storeInvoiceEmpty").hidden = !!latest;
-  clearLatestImage();
-  if (!latest) return;
-  $("storeInvoiceDate").textContent = formatDateTime(latest.createdAt);
-  try {
-    const image = await getInvoiceImage(getToken(), store.id, latest.id);
-    if (seq !== invoiceSeq) {
-      image.revoke?.();
-      return;
-    }
-    latestImage = image;
-    $("storeInvoiceImage").src = image.url;
-    $("storeInvoiceImageBtn").classList.add("ready");
-  } catch (e) {
-    const message = handleDataError(e, { silent: true });
-    if (message && seq === invoiceSeq) setMsg("invoiceMsg", message, "error");
   }
 }
 
@@ -193,41 +151,6 @@ $("goLocate").addEventListener("click", () => {
   if (storeId != null) go(`/tiendas/${storeId}/ubicar`);
 });
 
-$("goInvoices").addEventListener("click", () => {
-  if (storeId != null) go(`/tiendas/${storeId}/facturas`);
-});
-
-$("storeInvoiceImageBtn").addEventListener("click", () => {
-  if (latestImage) openImageViewer(latestImage.url); // no revoke: la pantalla sigue usando la URL
-});
-
-$("addInvoice").addEventListener("click", async () => {
-  if (savingInvoice || storeId == null) return;
-  const photo = await pickInvoicePhoto();
-  if (!photo) return;
-
-  savingInvoice = true;
-  const id = storeId;
-  const btn = $("addInvoice");
-  btn.disabled = true;
-  setMsg("invoiceMsg", "Guardando factura…");
-  try {
-    const { store } = await registerInvoice(getToken(), id, photo);
-    updateStore(store);
-    toast(`Factura registrada · total ${store.invoiceCount}`, "ok");
-    if (storeId === id) {
-      renderStore(store);
-      setMsg("invoiceMsg", "");
-    }
-  } catch (e) {
-    handleDataError(e);
-    if (e.code === "STORE_NOT_FOUND" && storeId === id) setMsg("invoiceMsg", "Esta tienda ya no existe.", "error");
-  } finally {
-    savingInvoice = false;
-    btn.disabled = false;
-  }
-});
-
 export const storeScreen = {
   id: "screenStore",
   parent: () => "/tiendas",
@@ -237,10 +160,6 @@ export const storeScreen = {
     if (changed) {
       $("history").innerHTML = "";
       $("storeName").textContent = "";
-      setMsg("invoiceMsg", "");
-      clearLatestImage();
-      $("storeInvoice").hidden = true;
-      $("storeInvoiceEmpty").hidden = false;
       $("screenStore").querySelector(".screen-body").scrollTop = 0;
     }
     let store = findStore(id);

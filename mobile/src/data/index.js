@@ -9,21 +9,12 @@
  *                                       → { store: Store, change: LocationChange }
  *   deleteLocationChange(token, storeId, changeId)
  *                                       → { store: Store }   (tienda ya actualizada)
- *   listInvoices(token, storeId)        → Invoice[]   (más reciente primero)
- *   registerInvoice(token, storeId, { base64, mimeType })
- *                                       → { store: Store, invoice: Invoice }
- *   getInvoiceImage(token, storeId, invoiceId)
- *                                       → { url, revoke }   url usable en <img src>; revoke() al terminar
- *   deleteInvoice(token, storeId, invoiceId)
- *                                       → { store: Store }   (tienda ya actualizada)
  *   exportBackup(token)                 → Backup (objeto JSON, ver docs/API_CONTRACT.md)
  *   restoreBackup(token, backup)        → { stores, changes }   (REEMPLAZA todos los datos)
  *
- * Store          { id, code, name, address, latitude, longitude, locationUpdatedAt, changeCount,
- *                  invoiceCount, latestInvoice: Invoice|null }
+ * Store          { id, code, name, address, latitude, longitude, locationUpdatedAt, changeCount }
  * LocationChange { id, storeId, latitude, longitude, accuracyM, source: "gps"|"map",
  *                  previousLatitude, previousLongitude, createdAt }
- * Invoice        { id, storeId, mimeType, byteSize, createdAt }
  * Los errores son siempre DataError (ver errors.js).
  */
 import { DATA_PROVIDER } from "../config.js";
@@ -54,14 +45,6 @@ export const registerLocation = async (token, storeId, location) =>
   (await provider()).registerLocation(token, storeId, location);
 export const deleteLocationChange = async (token, storeId, changeId) =>
   (await provider()).deleteLocationChange(token, storeId, changeId);
-export const listInvoices = async (token, storeId) =>
-  (await provider()).listInvoices(token, storeId);
-export const registerInvoice = async (token, storeId, image) =>
-  (await provider()).registerInvoice(token, storeId, image);
-export const getInvoiceImage = async (token, storeId, invoiceId) =>
-  (await provider()).getInvoiceImage(token, storeId, invoiceId);
-export const deleteInvoice = async (token, storeId, invoiceId) =>
-  (await provider()).deleteInvoice(token, storeId, invoiceId);
 export const exportBackup = async (token) => (await provider()).exportBackup(token);
 export const restoreBackup = async (token, backup) => (await provider()).restoreBackup(token, backup);
 

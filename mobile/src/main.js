@@ -15,21 +15,17 @@ import { closeDialog, initDialog } from "./lib/ui.js";
 import { atRoot, back, go, route, setGuard, startRouter } from "./router.js";
 import { accessScreen } from "./screens/access.js";
 import { backupScreen } from "./screens/backup.js";
-import { closeImageViewer, initImageViewer } from "./screens/common.js";
-import { invoicesScreen } from "./screens/invoices.js";
 import { locateScreen } from "./screens/locate.js";
 import { storeScreen } from "./screens/store.js";
 import { storesScreen } from "./screens/stores.js";
 
 initTheme();
 initDialog();
-initImageViewer();
 
 route("/acceso", accessScreen);
 route("/tiendas", storesScreen);
 route("/tiendas/:id", storeScreen);
 route("/tiendas/:id/ubicar", locateScreen);
-route("/tiendas/:id/facturas", invoicesScreen);
 route("/respaldo", backupScreen);
 
 // Barra inferior (Tiendas / Respaldo): cambiar de pestaña no apila historial.
@@ -50,7 +46,6 @@ for (const btn of document.querySelectorAll(".nav-back")) btn.addEventListener("
 if (Capacitor.isNativePlatform()) {
   // Botón "atrás" de Android: cierra diálogos, vuelve de pantalla o sale desde la principal.
   App.addListener("backButton", () => {
-    if (closeImageViewer()) return;
     if (closeDialog()) return;
     if (atRoot()) App.exitApp();
     else back();

@@ -17,14 +17,10 @@
 4. Registrar la ubicación **actual del teléfono (GPS)** → `POST /api/v2/stores/{storeId}/location-changes`.
    No se puede elegir un punto en el mapa: el mapa de la app es fijo y solo muestra la posición.
 5. Borrar un registro del historial → `DELETE /api/v2/stores/{storeId}/location-changes/{changeId}`.
-6. **Facturas** de la tienda: registrar una foto (cámara o galería) → `POST /api/v2/stores/{storeId}/invoices`;
-   ver el historial → `GET /api/v2/stores/{storeId}/invoices`; ver la imagen →
-   `GET /api/v2/stores/{storeId}/invoices/{invoiceId}/image`; borrar → `DELETE` de la misma ruta.
-   La tienda muestra siempre la factura más reciente (`latestInvoice`).
-7. Pestaña **Respaldo**: descargar/restaurar respaldo JSON → `GET`/`POST /api/v2/backup`; el CSV de
+6. Pestaña **Respaldo**: descargar/restaurar respaldo JSON → `GET`/`POST /api/v2/backup`; el CSV de
    tiendas lo arma la app con el listado del paso 2.
 
-Los pasos 2–7 envían `Authorization: Bearer <token>`.
+Los pasos 2–6 envían `Authorization: Bearer <token>`.
 
 ## Convenciones
 
@@ -81,12 +77,7 @@ Los pasos 2–7 envían `Authorization: Bearer <token>`.
       "latitude": 9.9351,
       "longitude": -84.1012,
       "locationUpdatedAt": "2026-10-15T17:31:00Z",
-      "changeCount": 2,
-      "invoiceCount": 1,
-      "latestInvoice": {
-        "id": 4, "storeId": 1, "mimeType": "image/jpeg", "byteSize": 182734,
-        "createdAt": "2026-10-15T18:02:00Z"
-      }
+      "changeCount": 2
     }
   ]
 }
@@ -98,8 +89,6 @@ Los pasos 2–7 envían `Authorization: Bearer <token>`.
 | `latitude` / `longitude` | Coordenada vigente; `null` si la tienda todavía no tiene |
 | `locationUpdatedAt` | Último registro desde la app; `null` si nunca se registró (la coordenada vino de la carga inicial) |
 | `changeCount` | Cantidad de veces que se registró la ubicación desde la app |
-| `invoiceCount` | Cantidad de facturas registradas |
-| `latestInvoice` | La factura más reciente (sin la imagen), o `null` si no tiene. Ver sección 7 |
 
 `GET /api/v2/stores/{storeId}` devuelve una sola tienda con el mismo formato (`404 STORE_NOT_FOUND`).
 
@@ -176,61 +165,7 @@ Cada POST crea un cambio nuevo y suma uno al conteo: la app pide confirmación y
 | 404 | `STORE_NOT_FOUND` | La tienda no existe |
 | 404 | `CHANGE_NOT_FOUND` | El registro no existe o es de otra tienda (p. ej. ya lo borró otra persona) |
 
-## 7. Facturas (fotos) de una tienda
-
-Cada tienda puede tener varias facturas (una foto cada una, con su fecha de registro). El objeto
-`Invoice` **no** trae la imagen, solo sus datos; la imagen se pide aparte:
-
-```json
-{ "id": 4, "storeId": 1, "mimeType": "image/jpeg", "byteSize": 182734, "createdAt": "2026-10-15T18:02:00Z" }
-```
-
-### 7.1 Listar las facturas
-
-`GET /api/v2/stores/{storeId}/invoices` — del más reciente al más antiguo.
-
-```json
-{ "items": [ { "id": 4, "storeId": 1, "mimeType": "image/jpeg", "byteSize": 182734, "createdAt": "2026-10-15T18:02:00Z" } ] }
-```
-
-### 7.2 Registrar una factura (subir la foto)
-
-`POST /api/v2/stores/{storeId}/invoices` — `multipart/form-data` con un campo `image` (el archivo).
-
-| Regla | Valor |
-|---|---|
-| Tipos | `image/jpeg`, `image/png`, `image/webp` (se verifica el contenido, no solo el nombre) |
-| Tamaño máximo | 12 MB (si se supera → `413` con `error.code` `VALIDATION_ERROR`) |
-
-`201 Created` — la tienda actualizada (con el nuevo `invoiceCount` y `latestInvoice`) y la factura:
-
-```json
-{ "store": { "id": 1, "invoiceCount": 2, "latestInvoice": { "id": 5, "...": "..." }, "...": "..." },
-  "invoice": { "id": 5, "storeId": 1, "mimeType": "image/jpeg", "byteSize": 201344, "createdAt": "2026-10-16T09:10:00Z" } }
-```
-
-### 7.3 Ver la imagen de una factura
-
-`GET /api/v2/stores/{storeId}/invoices/{invoiceId}/image` — responde la imagen binaria con su
-`Content-Type` (p. ej. `image/jpeg`). Requiere el token igual que el resto (la app la descarga con
-el header `Authorization`, no es una URL pública).
-
-### 7.4 Borrar una factura
-
-`DELETE /api/v2/stores/{storeId}/invoices/{invoiceId}` — sin cuerpo. `200 OK` → `{ "store": { "...": "..." } }`
-(la tienda ya con el `invoiceCount` y `latestInvoice` actualizados). El borrado es definitivo.
-
-| HTTP | `error.code` | Cuándo |
-|---|---|---|
-| 400 | `VALIDATION_ERROR` | Falta el archivo, tipo no permitido o imagen inválida |
-| 404 | `STORE_NOT_FOUND` | La tienda no existe |
-| 404 | `INVOICE_NOT_FOUND` | La factura no existe o es de otra tienda |
-
-> **Las facturas no entran en el respaldo JSON** (sección 8): el respaldo es solo tiendas e
-> historial de ubicaciones, para que siga siendo liviano y de texto. Las imágenes se conservan en
-> su almacenamiento (disco en FastAPI, base de datos en Supabase; ver `SUPABASE.md`).
-
-## 8. Respaldo de datos (JSON)
+## 6. Respaldo de datos (JSON)
 
 `GET /api/v2/backup` — todas las tiendas con su historial completo. Es el archivo que descarga la
 pestaña **Respaldo** (`olocation-respaldo-AAAA-MM-DD-HHMM.json`):
@@ -293,7 +228,6 @@ Se puede volver a importar con `python -m scripts.import_stores` (ignora las dos
 | 401 | `UNAUTHORIZED` | Borrar el token y volver a la pantalla de acceso |
 | 404 | `STORE_NOT_FOUND` | Refrescar el listado |
 | 404 | `CHANGE_NOT_FOUND` | Recargar el historial |
-| 404 | `INVOICE_NOT_FOUND` | Recargar el historial de facturas |
 | 404 / 405 | `NOT_FOUND` / `METHOD_NOT_ALLOWED` | — |
 | 429 | `TOO_MANY_ATTEMPTS` | Mostrar `message` |
 | 503 | `ACCESS_NOT_CONFIGURED` | Avisar al administrador |

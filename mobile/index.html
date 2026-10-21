@@ -48,10 +48,8 @@
     <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4L12 4Z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4.5h6V7"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6M3.5 4v4h4M12 7.5V12l3 2"/></symbol>
-    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3v-17Z"/><path d="M9 8h6M9 11.5h6M9 15h4"/></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.5A1.5 1.5 0 0 1 5 7h2l1.2-2h7.6L17 7h2a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5v-9Z"/><circle cx="12" cy="13" r="3.2"/></symbol>
     <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M8 9h8M8 12h8M8 15h5"/></symbol>
-    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 4.5-4.5 3 3L16 11l4 4.5"/></symbol>
   </svg>
 
   <!-- =================== Acceso (contraseña general) =================== -->
@@ -271,71 +269,13 @@
       <h3 class="section-label with-icon"><svg class="ic sm"><use href="#i-history"/></svg> Historial de cambios</h3>
       <ol id="history" class="history"></ol>
       <p id="historyMsg" class="form-msg" aria-live="polite"></p>
-
-      <h3 class="section-label with-icon"><svg class="ic sm"><use href="#i-receipt"/></svg> Factura</h3>
-      <div class="card invoice-card">
-        <div id="storeInvoice" class="invoice-latest" hidden>
-          <button id="storeInvoiceImageBtn" class="invoice-thumb" type="button" aria-label="Ver factura ampliada">
-            <img id="storeInvoiceImage" alt="Factura más reciente de la tienda" />
-          </button>
-          <div class="invoice-latest-txt">
-            <span class="invoice-label">Factura más reciente</span>
-            <span id="storeInvoiceDate" class="invoice-date"></span>
-          </div>
-          <button id="goInvoices" class="btn text small" type="button">
-            Ver todas (<span id="storeInvoiceCount">0</span>)
-          </button>
-        </div>
-        <div id="storeInvoiceEmpty" class="invoice-empty">
-          <svg class="ic"><use href="#i-receipt"/></svg>
-          <span>Todavía no se registró ninguna factura.</span>
-        </div>
-        <p id="invoiceMsg" class="form-msg" aria-live="polite"></p>
-      </div>
-    </div>
-    <div class="action-bar two">
-      <button id="goLocate" class="btn tonal" type="button">
-        <svg class="ic sm"><use href="#i-pin"/></svg> Ubicación
-      </button>
-      <button id="addInvoice" class="btn filled" type="button">
-        <svg class="ic sm"><use href="#i-receipt"/></svg> Registrar factura
-      </button>
-    </div>
-  </section>
-
-  <!-- =================== Historial de facturas =================== -->
-  <section id="screenInvoices" class="screen" hidden>
-    <header class="top-bar">
-      <button class="icon-btn nav-back" type="button" aria-label="Volver">
-        <svg class="ic"><use href="#i-back"/></svg>
-      </button>
-      <div class="bar-titles">
-        <span class="bar-overline">Facturas</span>
-        <h1 id="invoicesTitle" class="bar-title">Tienda</h1>
-      </div>
-      <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
-        <svg class="ic only-light"><use href="#i-moon"/></svg>
-        <svg class="ic only-dark"><use href="#i-sun"/></svg>
-      </button>
-    </header>
-    <div class="screen-body scroll">
-      <ol id="invoicesList" class="invoices"></ol>
-      <p id="invoicesMsg" class="form-msg" aria-live="polite"></p>
     </div>
     <div class="action-bar">
-      <button id="addInvoiceFromList" class="btn filled block" type="button">
-        <svg class="ic sm"><use href="#i-receipt"/></svg> Registrar factura
+      <button id="goLocate" class="btn filled block" type="button">
+        <svg class="ic sm"><use href="#i-pin"/></svg> Guardar ubicación
       </button>
     </div>
   </section>
-
-  <!-- Visor de imagen (factura ampliada) -->
-  <div id="imageViewer" class="viewer-scrim" hidden>
-    <button id="imageViewerClose" class="icon-btn viewer-close" type="button" aria-label="Cerrar">
-      <svg class="ic"><use href="#i-close"/></svg>
-    </button>
-    <img id="imageViewerImg" class="viewer-img" alt="Factura ampliada" />
-  </div>
 
   <!-- =================== Registrar ubicación =================== -->
   <section id="screenLocate" class="screen" hidden>

@@ -31,13 +31,6 @@ def db_path() -> Path:
     return path if path.is_absolute() else BASE_DIR / path
 
 
-def invoices_dir() -> Path:
-    """Carpeta donde se guardan las imágenes de las facturas (junto a la base por defecto)."""
-    raw = os.environ.get("OLOCATION_INVOICES_DIR")
-    path = Path(raw) if raw else db_path().parent / "invoices"
-    return path if path.is_absolute() else BASE_DIR / path
-
-
 def access_password() -> str | None:
     """Contraseña general de acceso a la app. Sin ella nadie puede entrar."""
     return os.environ.get("OLOCATION_ACCESS_PASSWORD") or None

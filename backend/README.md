@@ -42,15 +42,6 @@ created_at           TEXT (UTC)          created_at          TEXT (UTC)
   fila en `store_location_changes` (con la coordenada anterior) y actualiza la tienda.
 - El **conteo de cambios** de una tienda es la cantidad de filas de su historial.
 
-### Facturas
-
-Cada tienda puede tener varias **facturas** (fotos). La tabla `store_invoices` (ver
-`db/migrations/002_invoices.sql`) guarda la ruta, el tipo y el tamaño; la imagen se guarda en disco
-en `data/invoices/` (configurable con `OLOCATION_INVOICES_DIR`). Endpoints:
-`GET`/`POST /api/v2/stores/{id}/invoices`, `GET .../invoices/{invoiceId}/image` y `DELETE`. La
-tienda expone `invoiceCount` y `latestInvoice` (la más reciente). Ver `docs/API_CONTRACT.md`
-sección 7. Las facturas **no** se incluyen en el respaldo JSON.
-
 ## Puesta en marcha
 
 ```bash
