@@ -382,6 +382,52 @@ button, input { font-family: inherit; }
 .filter.on { background: var(--primary-container); border-color: transparent; color: var(--on-primary-container); }
 .filter.on span { color: inherit; }
 
+/* ---- Escanear factura ---- */
+.scan-btn { display: flex; min-height: 48px; margin-top: 10px; }
+.scan-btn.busy .ic { animation: spin 1.2s linear infinite; }
+.scan-panel { border: 1.5px solid var(--primary); }
+.scan-head { display: flex; align-items: center; gap: 14px; }
+.scan-head-txt { min-width: 0; }
+.scan-head h2 { margin: 0 0 2px; font-size: 1.05rem; font-weight: 700; }
+.scan-head p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.scan-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+.scan-fields[hidden] { display: none; }
+.scan-fields dt { color: var(--muted); }
+.scan-fields dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.scan-text { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+.scan-text summary { cursor: pointer; padding: 4px 0; }
+.scan-text pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.scan-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.store-item .best {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .section-label {
   margin: 4px 4px 8px;
   font-size: 0.8rem;

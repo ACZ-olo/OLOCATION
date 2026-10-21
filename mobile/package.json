@@ -13,6 +13,7 @@
     "android:apk": "vite build && cap sync android && cd android && gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor-mlkit/text-recognition": "^8.2.1",
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/camera": "^8.2.6",
@@ -24,7 +25,8 @@
     "@fontsource/open-sans": "^5.3.0",
     "@fontsource/roboto": "^5.3.0",
     "@supabase/supabase-js": "^2.118.0",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
