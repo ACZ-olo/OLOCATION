@@ -88,7 +88,8 @@ function render({ force = false } = {}) {
       ? `${items.length} resultado(s) para “${query}”`
       : `${items.length} tienda(s)`;
 
-  $("stores").innerHTML = items.slice(0, MAX_RENDERED).map(storeItem).join("");
+  // Sin escaneo no hay "mejor coincidencia": la lista va en su orden normal.
+  $("stores").innerHTML = items.slice(0, MAX_RENDERED).map((s) => storeItem(s)).join("");
   const more = items.length - MAX_RENDERED;
   $("storesMore").hidden = more <= 0;
   $("storesMore").textContent = `Y ${more} tienda(s) más. Escribí en el buscador para encontrar la tuya.`;
