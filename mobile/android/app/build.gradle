@@ -22,6 +22,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // El APK se llama olocation.apk (en build/outputs/apk/debug o release).
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "olocation.apk"
+        }
+    }
 }
 
 repositories {

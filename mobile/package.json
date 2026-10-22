@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "android:sync": "vite build && cap sync android",
     "android:open": "cap open android",
-    "android:apk": "vite build && cap sync android && cd android && gradlew assembleDebug"
+    "android:apk": "vite build && cap sync android && cd android && .\\gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor-mlkit/text-recognition": "^8.2.1",
