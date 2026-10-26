@@ -10,9 +10,19 @@
  *   deleteLocationChange(token, storeId, changeId)
  *                                       → { store: Store }   (tienda ya actualizada)
  *   exportBackup(token)                 → Backup (objeto JSON, ver docs/API_CONTRACT.md)
- *   restoreBackup(token, backup)        → { stores, changes }   (REEMPLAZA todos los datos)
+ *   restoreBackup(token, backup)        → { stores, changes, invoiceStores?, invoiceChanges? }
+ *                                         (REEMPLAZA todos los datos)
+ *
+ * Módulo "Por factura" (clientes tal cual la factura escaneada; solo Supabase):
+ *   listInvoiceStores(token)            → InvoiceStore[]
+ *   registerInvoiceStore(token, { code, name, address, notes })
+ *                                       → { store: InvoiceStore, created }  (si el código ya
+ *                                         estaba registrado devuelve ese, sin cambios)
+ *   listInvoiceLocationChanges / registerInvoiceLocation / deleteInvoiceLocationChange
+ *                                       → igual que las de tiendas
  *
  * Store          { id, code, name, address, latitude, longitude, locationUpdatedAt, changeCount }
+ * InvoiceStore   Store + { notes, createdAt }
  * LocationChange { id, storeId, latitude, longitude, accuracyM, source: "gps"|"map",
  *                  previousLatitude, previousLongitude, createdAt }
  * Los errores son siempre DataError (ver errors.js).
@@ -47,5 +57,14 @@ export const deleteLocationChange = async (token, storeId, changeId) =>
   (await provider()).deleteLocationChange(token, storeId, changeId);
 export const exportBackup = async (token) => (await provider()).exportBackup(token);
 export const restoreBackup = async (token, backup) => (await provider()).restoreBackup(token, backup);
+export const listInvoiceStores = async (token) => (await provider()).listInvoiceStores(token);
+export const registerInvoiceStore = async (token, fields) =>
+  (await provider()).registerInvoiceStore(token, fields);
+export const listInvoiceLocationChanges = async (token, storeId) =>
+  (await provider()).listInvoiceLocationChanges(token, storeId);
+export const registerInvoiceLocation = async (token, storeId, location) =>
+  (await provider()).registerInvoiceLocation(token, storeId, location);
+export const deleteInvoiceLocationChange = async (token, storeId, changeId) =>
+  (await provider()).deleteInvoiceLocationChange(token, storeId, changeId);
 
 export { DataError };

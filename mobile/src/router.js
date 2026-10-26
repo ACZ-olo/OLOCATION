@@ -37,9 +37,10 @@ function render() {
   if (redirect && redirect !== path) return go(redirect, { replace: true });
 
   if (current && current.screen !== found.screen) current.screen.leave?.();
+  // Por id y no por objeto: los dos módulos de tiendas usan las mismas pantallas.
   for (const r of routes) {
     const el = document.getElementById(r.screen.id);
-    if (el) el.hidden = r.screen !== found.screen;
+    if (el) el.hidden = r.screen.id !== found.screen.id;
   }
   current = found;
   found.screen.enter(found.params);

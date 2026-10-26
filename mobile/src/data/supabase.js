@@ -1,4 +1,4 @@
-// Proveedor "supabase" — PREPARADO, TODAVÍA NO EN USO.
+// Proveedor "supabase" (el que usa la app desde 2026-10-16).
 //
 // Usa las funciones RPC definidas en supabase/migrations/ (ver docs/SUPABASE.md). Las tablas
 // tienen RLS sin políticas, así que la anon key no puede leerlas ni escribirlas directamente:
@@ -77,6 +77,9 @@ const toChange = (row) => ({
   createdAt: row.created_at,
 });
 
+const toInvoiceStore = (row) => ({ ...toStore(row), notes: row.notes, createdAt: row.created_at });
+const toInvoiceChange = (row) => ({ ...toChange(row), storeId: row.invoice_store_id });
+
 export async function verifyAccess(password) {
   // verify_access no lanza error ante contraseña incorrecta: devuelve { ok: false, error, message }.
   const data = await rpc("verify_access", { p_password: password });
@@ -124,4 +127,48 @@ export async function deleteLocationChange(token, storeId, changeId) {
     p_change_id: changeId,
   });
   return { store: toStore(data.store) };
+}
+
+// Módulo "Por factura" (supabase/migrations/20261026090000_invoice_stores.sql).
+
+export async function listInvoiceStores(token) {
+  return (await rpc("list_invoice_stores", { p_token: token })).map(toInvoiceStore);
+}
+
+export async function registerInvoiceStore(token, { code, name, address, notes }) {
+  const data = await rpc("register_invoice_store", {
+    p_token: token,
+    p_code: code,
+    p_name: name,
+    p_address: address || null,
+    p_notes: notes || null,
+  });
+  return { store: toInvoiceStore(data.store), created: data.created };
+}
+
+export async function listInvoiceLocationChanges(token, storeId) {
+  return (
+    await rpc("list_invoice_store_location_changes", { p_token: token, p_store_id: storeId })
+  ).map(toInvoiceChange);
+}
+
+export async function registerInvoiceLocation(token, storeId, { latitude, longitude, source, accuracyM }) {
+  const data = await rpc("register_invoice_store_location", {
+    p_token: token,
+    p_store_id: storeId,
+    p_latitude: latitude,
+    p_longitude: longitude,
+    p_source: source,
+    p_accuracy_m: accuracyM ?? null,
+  });
+  return { store: toInvoiceStore(data.store), change: toInvoiceChange(data.change) };
+}
+
+export async function deleteInvoiceLocationChange(token, storeId, changeId) {
+  const data = await rpc("delete_invoice_store_location_change", {
+    p_token: token,
+    p_store_id: storeId,
+    p_change_id: changeId,
+  });
+  return { store: toInvoiceStore(data.store) };
 }

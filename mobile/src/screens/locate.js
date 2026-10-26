@@ -1,15 +1,15 @@
 // Registrar la ubicación de una tienda: SOLO con la ubicación actual del teléfono (GPS).
 // El mapa es de referencia: no se puede mover, hacer zoom ni elegir un punto.
+// Sirve a los dos módulos (#/tiendas/:id/ubicar y #/facturas/:id/ubicar).
 import L from "leaflet";
 import { DEFAULT_CENTER, GPS_LOW_ACCURACY_M } from "../config.js";
-import { registerLocation } from "../data/index.js";
 import { getToken } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords } from "../lib/format.js";
 import { locateBest } from "../lib/geo.js";
 import { currentPin, newPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, toast } from "../lib/ui.js";
 import { back } from "../router.js";
-import { findStore, loadStores, updateStore } from "../state.js";
+import { MODULES, findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
 const GPS_ZOOM = 18;
@@ -19,6 +19,7 @@ let currentMarker = null; // coordenada que la tienda tiene hoy (gris)
 let gpsMarker = null; // ubicación actual del teléfono (verde)
 let accuracyCircle = null;
 let gps = null; // búsqueda de GPS en curso
+let module = "stores";
 let store = null;
 let picked = null; // { latitude, longitude, source: "gps", accuracyM }
 let saving = false;
@@ -152,8 +153,8 @@ $("saveLocation").addEventListener("click", async () => {
   btn.disabled = true;
   btn.lastChild.textContent = " Guardando…";
   try {
-    const result = await registerLocation(getToken(), store.id, p);
-    updateStore(result.store);
+    const result = await MODULES[module].registerLocation(getToken(), store.id, p);
+    updateStore(result.store, module);
     toast(`Ubicación guardada · cambio n.º ${result.store.changeCount}`, "ok");
     back();
   } catch (e) {
@@ -165,44 +166,50 @@ $("saveLocation").addEventListener("click", async () => {
   }
 });
 
-export const locateScreen = {
-  id: "screenLocate",
-  parent: ({ id }) => `/tiendas/${id}`,
-  async enter({ id }) {
-    ensureMap();
-    cancelGps();
-    clearPosition();
-    setTimeout(() => map.invalidateSize(), 50);
+function locateScreenFor(key) {
+  return {
+    id: "screenLocate",
+    parent: ({ id }) => `${MODULES[key].base}/${id}`,
+    async enter({ id }) {
+      ensureMap();
+      cancelGps();
+      clearPosition();
+      setTimeout(() => map.invalidateSize(), 50);
 
-    store = findStore(id);
-    if (!store) {
-      try {
-        await loadStores();
-      } catch (e) {
-        handleDataError(e);
+      module = key;
+      store = findStore(id, key);
+      if (!store) {
+        try {
+          await loadStores({ module: key });
+        } catch (e) {
+          handleDataError(e);
+          return;
+        }
+        store = findStore(id, key);
+      }
+      if (!store) {
+        setSheet({ iconId: "i-pin-off", title: "Tienda no encontrada", detail: "", tone: "error" });
+        $("useGps").disabled = true;
         return;
       }
-      store = findStore(id);
-    }
-    if (!store) {
-      setSheet({ iconId: "i-pin-off", title: "Tienda no encontrada", detail: "", tone: "error" });
-      $("useGps").disabled = true;
-      return;
-    }
-    $("locateTitle").textContent = store.name;
+      $("locateTitle").textContent = store.name;
 
-    if (currentMarker) currentMarker.remove();
-    currentMarker = null;
-    if (store.latitude != null) {
-      const latLng = [store.latitude, store.longitude];
-      currentMarker = L.marker(latLng, { icon: currentPin(), interactive: false }).addTo(map);
-      map.setView(latLng, 17, { animate: false });
-    } else {
-      map.setView(DEFAULT_CENTER, 8, { animate: false });
-    }
-    measure(); // la única forma de registrar: arranca el GPS al entrar
-  },
-  leave() {
-    cancelGps();
-  },
-};
+      if (currentMarker) currentMarker.remove();
+      currentMarker = null;
+      if (store.latitude != null) {
+        const latLng = [store.latitude, store.longitude];
+        currentMarker = L.marker(latLng, { icon: currentPin(), interactive: false }).addTo(map);
+        map.setView(latLng, 17, { animate: false });
+      } else {
+        map.setView(DEFAULT_CENTER, 8, { animate: false });
+      }
+      measure(); // la única forma de registrar: arranca el GPS al entrar
+    },
+    leave() {
+      cancelGps();
+    },
+  };
+}
+
+export const locateScreen = locateScreenFor("stores");
+export const invoiceLocateScreen = locateScreenFor("invoice");

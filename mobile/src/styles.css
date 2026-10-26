@@ -334,6 +334,29 @@ button, input { font-family: inherit; }
   background: var(--bg);
 }
 .search-bar > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+/* ---- Pestañas de módulo (Tiendas / Por factura) ---- */
+.module-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.module-tab {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.module-tab.on { background: var(--primary-container); color: var(--on-primary-container); }
 .search {
   display: flex;
   align-items: center;
@@ -403,6 +426,11 @@ button, input { font-family: inherit; }
 .scan-fields[hidden] { display: none; }
 .scan-fields dt { color: var(--muted); }
 .scan-fields dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.scan-registered { margin: 10px 0 0; font-size: 0.9rem; color: var(--muted); }
+.scan-registered:empty { display: none; }
+.scan-registered.ok { color: var(--primary); font-weight: 500; }
+.scan-registered.warn { color: var(--warn); }
+.scan-registered.error { color: var(--danger); }
 .scan-text { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
 .scan-text summary { cursor: pointer; padding: 4px 0; }
 .scan-text pre {
@@ -523,6 +551,9 @@ button, input { font-family: inherit; }
 .store-head-txt { min-width: 0; }
 .store-name { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; line-height: 1.25; }
 .store-meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.store-notes[hidden] { display: none; }
+.store-notes .section-label { margin: 0 0 6px; }
+.store-notes p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .code-chip {
   display: inline-block;
   padding: 1px 8px;

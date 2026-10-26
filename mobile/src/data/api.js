@@ -78,3 +78,13 @@ export async function restoreBackup(token, backup) {
 export async function deleteLocationChange(token, storeId, changeId) {
   return request(`/stores/${storeId}/location-changes/${changeId}`, { token, method: "DELETE" });
 }
+
+// El módulo "Por factura" existe solo en Supabase: el backend FastAPI no tiene esos endpoints.
+const invoiceModuleMissing = async () => {
+  throw new DataError("NOT_CONFIGURED", "El módulo Por factura solo está disponible con Supabase.");
+};
+export const listInvoiceStores = invoiceModuleMissing;
+export const registerInvoiceStore = invoiceModuleMissing;
+export const listInvoiceLocationChanges = invoiceModuleMissing;
+export const registerInvoiceLocation = invoiceModuleMissing;
+export const deleteInvoiceLocationChange = invoiceModuleMissing;

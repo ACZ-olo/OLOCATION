@@ -110,6 +110,10 @@
       </button>
     </header>
     <div class="search-bar">
+      <div class="module-tabs" role="tablist" aria-label="Módulo">
+        <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Tiendas</button>
+        <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Por factura</button>
+      </div>
       <div class="search">
         <svg class="ic"><use href="#i-search"/></svg>
         <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
@@ -137,6 +141,7 @@
           </div>
         </div>
         <dl id="scanFields" class="scan-fields" hidden></dl>
+        <p id="scanRegistered" class="scan-registered"></p>
         <details class="scan-text">
           <summary>Ver texto leído</summary>
           <pre id="scanText"></pre>
@@ -180,7 +185,8 @@
         <span class="lead"><svg class="ic"><use href="#i-download"/></svg></span>
         <div class="action-txt">
           <h2>Guardar respaldo</h2>
-          <p>Descarga todas las tiendas con su historial de cambios en un archivo <strong>JSON</strong>.
+          <p>Descarga todas las tiendas (también las de <strong>Por factura</strong>) con su historial de
+             cambios en un archivo <strong>JSON</strong>.
              Guardalo en un lugar seguro (Drive, correo…).</p>
           <button id="exportBackup" class="btn filled" type="button">
             <svg class="ic sm"><use href="#i-download"/></svg> Descargar respaldo
@@ -231,7 +237,7 @@
       <button class="icon-btn nav-back" type="button" aria-label="Volver">
         <svg class="ic"><use href="#i-back"/></svg>
       </button>
-      <h1 class="bar-title">Tienda</h1>
+      <h1 id="storeTitle" class="bar-title">Tienda</h1>
       <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
         <svg class="ic only-light"><use href="#i-moon"/></svg>
         <svg class="ic only-dark"><use href="#i-sun"/></svg>
@@ -244,6 +250,11 @@
           <h2 id="storeName" class="store-name"></h2>
           <p class="store-meta"><span id="storeCode" class="code-chip"></span> <span id="storeAddress"></span></p>
         </div>
+      </div>
+
+      <div id="storeNotesWrap" class="card store-notes" hidden>
+        <h3 class="section-label">Observaciones</h3>
+        <p id="storeNotes"></p>
       </div>
 
       <div class="card map-card">

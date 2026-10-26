@@ -1,4 +1,5 @@
 // Detalle de una tienda: coordenada actual, conteo de cambios e historial con fechas.
+// Sirve a los dos módulos (#/tiendas/:id y #/facturas/:id); cada uno con sus propios datos.
 import L from "leaflet";
 import { deleteLocationChange, listLocationChanges } from "../data/index.js";
 import { getToken } from "../lib/access.js";
@@ -6,11 +7,12 @@ import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelativ
 import { currentPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
 import { go } from "../router.js";
-import { findStore, loadStores, updateStore } from "../state.js";
+import { MODULES, findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
 let map;
 let marker;
+let module = "stores";
 let storeId = null;
 let requestSeq = 0;
 let changes = []; // historial mostrado (más reciente primero)
@@ -35,6 +37,9 @@ function renderStore(store) {
   $("storeName").textContent = store.name;
   $("storeCode").textContent = store.code;
   $("storeAddress").textContent = store.address || "";
+  // Observaciones de la factura (solo en "Por factura").
+  $("storeNotesWrap").hidden = !store.notes;
+  $("storeNotes").textContent = store.notes || "";
   $("storeChangeCount").textContent = store.changeCount;
   $("storeUpdated").textContent = store.locationUpdatedAt ? formatRelative(store.locationUpdatedAt) : "—";
 
@@ -88,7 +93,7 @@ async function loadHistory(id) {
   const seq = ++requestSeq;
   setMsg("historyMsg", "Cargando historial…");
   try {
-    const changes = await listLocationChanges(getToken(), id);
+    const changes = await MODULES[module].listChanges(getToken(), id);
     if (seq === requestSeq) renderHistory(changes);
   } catch (e) {
     const message = handleDataError(e, { silent: true });
@@ -97,7 +102,7 @@ async function loadHistory(id) {
 }
 
 async function confirmDelete(change) {
-  const store = findStore(storeId);
+  const store = findStore(storeId, module);
   const index = changes.indexOf(change);
   const number = changes.length - index;
   const isLatest = index === 0;
@@ -130,17 +135,19 @@ $("history").addEventListener("click", async (e) => {
   deleting = true;
   btn.disabled = true;
   const id = storeId;
+  const mod = module;
+  const same = () => storeId === id && module === mod;
   try {
-    const { store } = await deleteLocationChange(getToken(), id, change.id);
-    updateStore(store);
+    const { store } = await MODULES[mod].deleteChange(getToken(), id, change.id);
+    updateStore(store, mod);
     toast("Registro borrado.", "ok");
-    if (storeId === id) {
+    if (same()) {
       renderStore(store);
       await loadHistory(id);
     }
   } catch (e) {
     handleDataError(e);
-    if (e.code === "CHANGE_NOT_FOUND" && storeId === id) loadHistory(id); // ya no existía
+    if (e.code === "CHANGE_NOT_FOUND" && same()) loadHistory(id); // ya no existía
     btn.disabled = false;
   } finally {
     deleting = false;
@@ -148,37 +155,45 @@ $("history").addEventListener("click", async (e) => {
 });
 
 $("goLocate").addEventListener("click", () => {
-  if (storeId != null) go(`/tiendas/${storeId}/ubicar`);
+  if (storeId != null) go(`${MODULES[module].base}/${storeId}/ubicar`);
 });
 
-export const storeScreen = {
-  id: "screenStore",
-  parent: () => "/tiendas",
-  async enter({ id }) {
-    const changed = storeId !== Number(id);
-    storeId = Number(id);
-    if (changed) {
-      $("history").innerHTML = "";
-      $("storeName").textContent = "";
-      $("screenStore").querySelector(".screen-body").scrollTop = 0;
-    }
-    let store = findStore(id);
-    if (!store) {
-      try {
-        await loadStores();
-      } catch (e) {
-        const message = handleDataError(e, { silent: true });
-        if (message) setMsg("historyMsg", message, "error");
+function detailScreen(key) {
+  return {
+    id: "screenStore",
+    parent: () => MODULES[key].base,
+    async enter({ id }) {
+      const changed = storeId !== Number(id) || module !== key;
+      module = key;
+      storeId = Number(id);
+      if (changed) {
+        $("history").innerHTML = "";
+        $("storeName").textContent = "";
+        $("storeNotesWrap").hidden = true;
+        $("screenStore").querySelector(".screen-body").scrollTop = 0;
+      }
+      $("storeTitle").textContent = key === "invoice" ? "Por factura" : "Tienda";
+      let store = findStore(id, key);
+      if (!store) {
+        try {
+          await loadStores({ module: key });
+        } catch (e) {
+          const message = handleDataError(e, { silent: true });
+          if (message) setMsg("historyMsg", message, "error");
+          return;
+        }
+        store = findStore(id, key);
+      }
+      if (!store) {
+        $("storeName").textContent = "Tienda no encontrada";
+        setMsg("historyMsg", "Esta tienda ya no existe en el listado.", "error");
         return;
       }
-      store = findStore(id);
-    }
-    if (!store) {
-      $("storeName").textContent = "Tienda no encontrada";
-      setMsg("historyMsg", "Esta tienda ya no existe en el listado.", "error");
-      return;
-    }
-    renderStore(store);
-    loadHistory(store.id);
-  },
-};
+      renderStore(store);
+      loadHistory(store.id);
+    },
+  };
+}
+
+export const storeScreen = detailScreen("stores");
+export const invoiceStoreScreen = detailScreen("invoice");

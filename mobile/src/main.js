@@ -15,9 +15,9 @@ import { closeDialog, initDialog } from "./lib/ui.js";
 import { atRoot, back, go, route, setGuard, startRouter } from "./router.js";
 import { accessScreen } from "./screens/access.js";
 import { backupScreen } from "./screens/backup.js";
-import { locateScreen } from "./screens/locate.js";
-import { storeScreen } from "./screens/store.js";
-import { storesScreen } from "./screens/stores.js";
+import { invoiceLocateScreen, locateScreen } from "./screens/locate.js";
+import { invoiceStoreScreen, storeScreen } from "./screens/store.js";
+import { invoiceStoresScreen, storesScreen } from "./screens/stores.js";
 
 initTheme();
 initDialog();
@@ -26,6 +26,10 @@ route("/acceso", accessScreen);
 route("/tiendas", storesScreen);
 route("/tiendas/:id", storeScreen);
 route("/tiendas/:id/ubicar", locateScreen);
+// Módulo "Por factura": mismas pantallas, con sus propios datos.
+route("/facturas", invoiceStoresScreen);
+route("/facturas/:id", invoiceStoreScreen);
+route("/facturas/:id/ubicar", invoiceLocateScreen);
 route("/respaldo", backupScreen);
 
 // Barra inferior (Tiendas / Respaldo): cambiar de pestaña no apila historial.

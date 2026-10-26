@@ -1,4 +1,11 @@
-// Listado de todas las tiendas con buscador general y filtros.
+// Listado de tiendas con buscador general y filtros. Dos pestañas (módulos) en la misma pantalla:
+//   Tiendas      el listado cargado por el administrador (#/tiendas)
+//   Por factura  los clientes registrados al escanear facturas, tal cual la factura (#/facturas)
+// Escanear una factura SIEMPRE registra su cliente en "Por factura" si el código todavía no está.
+// Desde Tiendas además se muestran las tiendas que coinciden (como antes); desde Por factura se
+// abre directamente el registro.
+import { registerInvoiceStore } from "../data/index.js";
+import { getToken } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
 import { parseInvoice } from "../lib/invoice.js";
 import { matchInvoice } from "../lib/match.js";
@@ -6,7 +13,7 @@ import { scanInvoiceText } from "../lib/ocr.js";
 import { PhotoError } from "../lib/photo.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
 import { go } from "../router.js";
-import { findStore, loadStores, state } from "../state.js";
+import { MODULES, findStore, loadStores, state, storesOf, updateStore } from "../state.js";
 import { handleDataError, lockApp } from "./common.js";
 
 const MAX_RENDERED = 150; // con miles de tiendas, se muestran las primeras y se pide afinar
@@ -15,11 +22,17 @@ const FILTERS = {
   pending: (s) => s.changeCount === 0,
   done: (s) => s.changeCount > 0,
 };
+const EMPTY = {
+  stores: "No hay tiendas cargadas todavía. Pedile al administrador que cargue el listado.",
+  invoice: "Todavía no hay clientes registrados. Escaneá una factura para registrar el primero.",
+};
 
+let module = "stores";
 let filter = "all";
 let renderedKey = "";
-// Resultado del último escaneo de factura: mientras exista, la lista muestra solo esas tiendas.
-let scan = null; // { seq, ids, byCode, nearCode, invoice }
+// Resultado del último escaneo de factura (solo en Tiendas): mientras exista, la lista muestra
+// solo esas tiendas.
+let scan = null; // { seq, ids, byCode, nearCode, invoice, registered }
 let scanSeq = 0;
 let scanning = false;
 // Texto de búsqueda precalculado por tienda (sin tildes, en minúsculas).
@@ -28,7 +41,7 @@ const searchIndex = new WeakMap();
 const haystack = (s) => {
   let text = searchIndex.get(s);
   if (text === undefined) {
-    text = normalize(`${s.name} ${s.code} ${s.address || ""}`);
+    text = normalize(`${s.name} ${s.code} ${s.address || ""} ${s.notes || ""}`);
     searchIndex.set(s, text);
   }
   return text;
@@ -36,7 +49,7 @@ const haystack = (s) => {
 
 function filtered() {
   const terms = normalize($("storeSearch").value).split(/\s+/).filter(Boolean);
-  return state.stores.filter(
+  return storesOf(module).filter(
     (s) => FILTERS[filter](s) && terms.every((t) => haystack(s).includes(t))
   );
 }
@@ -55,20 +68,28 @@ function storeItem(s, best = false) {
     : `<span class="badge muted">Pendiente</span>`;
   return (
     `<li><button class="store-item" type="button" data-id="${s.id}">` +
-    `<span class="lead ${done ? "" : "pending"}">${icon("i-store")}</span>` +
+    `<span class="lead ${done ? "" : "pending"}">${icon(module === "invoice" ? "i-scan" : "i-store")}</span>` +
     `<span class="txt">${best ? `<span class="best">Mejor coincidencia</span>` : ""}` +
     `<span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span>${coords}</span>` +
     `<span class="trail">${trail}</span></button></li>`
   );
 }
 
+function renderTabs() {
+  for (const tab of document.querySelectorAll(".module-tab")) {
+    const on = tab.dataset.module === module;
+    tab.classList.toggle("on", on);
+    tab.setAttribute("aria-selected", String(on));
+  }
+}
+
 function render({ force = false } = {}) {
-  if (!state.stores) return;
-  const key = `${state.version}|${filter}|${$("storeSearch").value}|${scan?.seq ?? ""}`;
+  const all = storesOf(module);
+  if (!all) return;
+  const key = `${state.version}|${module}|${filter}|${$("storeSearch").value}|${scan?.seq ?? ""}`;
   if (!force && key === renderedKey) return; // nada cambió: se conserva el scroll
   renderedKey = key;
 
-  const all = state.stores;
   $("countAll").textContent = all.length;
   $("countPending").textContent = all.filter(FILTERS.pending).length;
   $("countDone").textContent = all.filter(FILTERS.done).length;
@@ -86,16 +107,16 @@ function render({ force = false } = {}) {
     ? ""
     : query
       ? `${items.length} resultado(s) para “${query}”`
-      : `${items.length} tienda(s)`;
+      : `${items.length} ${module === "invoice" ? "cliente(s)" : "tienda(s)"}`;
 
   // Sin escaneo no hay "mejor coincidencia": la lista va en su orden normal.
   $("stores").innerHTML = items.slice(0, MAX_RENDERED).map((s) => storeItem(s)).join("");
   const more = items.length - MAX_RENDERED;
   $("storesMore").hidden = more <= 0;
-  $("storesMore").textContent = `Y ${more} tienda(s) más. Escribí en el buscador para encontrar la tuya.`;
+  $("storesMore").textContent = `Y ${more} más. Escribí en el buscador para encontrar la tuya.`;
 
   if (!all.length) {
-    setMsg("storesMsg", "No hay tiendas cargadas todavía. Pedile al administrador que cargue el listado.");
+    setMsg("storesMsg", EMPTY[module]);
   } else if (!items.length) {
     setMsg("storesMsg", query ? "Ninguna tienda coincide con la búsqueda." : "No hay tiendas en este filtro.");
   } else {
@@ -105,7 +126,7 @@ function render({ force = false } = {}) {
 
 /** Lista con las tiendas que coinciden con la factura escaneada (la mejor primero). */
 function renderScan() {
-  const items = scan.ids.map(findStore).filter(Boolean);
+  const items = scan.ids.map((id) => findStore(id)).filter(Boolean);
   const { code, name, place, notes, text } = scan.invoice;
   // Lo que se leyó de la factura, para que el transportista confirme de un vistazo.
   const fields = [
@@ -117,6 +138,8 @@ function renderScan() {
     .map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`)
     .join("");
   $("scanFields").hidden = !fields.length;
+  $("scanRegistered").textContent = scan.registered.text;
+  $("scanRegistered").className = `scan-registered ${scan.registered.tone}`;
   $("scanText").textContent = text.trim() || "(no se leyó texto)";
   $("scanInfo").textContent = !items.length
     ? "No se encontró ninguna tienda con el código ni el nombre de esta factura."
@@ -144,9 +167,71 @@ function closeScan() {
   render();
 }
 
+/** Qué faltó leer para poder registrar en "Por factura" ("el código", "el nombre"…), o "". */
+const missingFields = ({ code, name }) =>
+  [!code && "el código", !name && "el nombre"].filter(Boolean).join(" ni ");
+
+/**
+ * Registra el cliente de la factura en "Por factura". Si el código ya estaba, el registro queda
+ * como está. Devuelve { store, created } o null si falló (el error ya se mostró).
+ */
+async function registerFromInvoice(invoice) {
+  try {
+    const result = await registerInvoiceStore(getToken(), invoice);
+    updateStore(result.store, "invoice");
+    return result;
+  } catch (e) {
+    handleDataError(e);
+    return null;
+  }
+}
+
+/** Escaneo desde Tiendas: coincidencias como siempre + registro en "Por factura". */
+async function scanFromStores(invoice) {
+  const matches = matchInvoice(invoice, state.stores);
+  const missing = missingFields(invoice);
+  let registered;
+  if (missing) {
+    registered = { text: `No se registró en Por factura: no se pudo leer ${missing}.`, tone: "warn" };
+  } else {
+    const result = await registerFromInvoice(invoice);
+    registered = !result
+      ? { text: "No se pudo registrar en Por factura.", tone: "error" }
+      : result.created
+        ? { text: "Cliente registrado en Por factura.", tone: "ok" }
+        : { text: "Este cliente ya estaba registrado en Por factura.", tone: "" };
+  }
+  if (module !== "stores") return; // cambió de pestaña mientras se registraba
+  $("storeSearch").value = "";
+  scan = {
+    seq: ++scanSeq,
+    ids: matches.map((m) => m.store.id),
+    byCode: matches.some((m) => m.byCode),
+    nearCode: matches.some((m) => m.byNearCode),
+    invoice,
+    registered,
+  };
+  render();
+  $("storesBody").scrollTop = 0;
+  $("scanPanel").querySelector("details").open = false;
+}
+
+/** Escaneo desde Por factura: registra (si no estaba) y abre el registro. */
+async function scanFromInvoice(invoice) {
+  const missing = missingFields(invoice);
+  if (missing) {
+    toast(`No se pudo leer ${missing} de la factura. Escaneá de nuevo con buena luz.`, "error");
+    return;
+  }
+  const result = await registerFromInvoice(invoice);
+  if (!result) return;
+  toast(result.created ? "Cliente registrado." : "Este cliente ya estaba registrado.", result.created ? "ok" : "");
+  go(`${MODULES.invoice.base}/${result.store.id}`);
+}
+
 async function scanInvoice() {
   if (scanning) return;
-  if (!state.stores?.length) {
+  if (module === "stores" && !state.stores?.length) {
     toast("Primero tiene que cargarse el listado de tiendas.", "error");
     return;
   }
@@ -156,18 +241,8 @@ async function scanInvoice() {
   $("scanInvoice").classList.add("busy");
   try {
     const invoice = parseInvoice(await scanInvoiceText());
-    const matches = matchInvoice(invoice, state.stores);
-    $("storeSearch").value = "";
-    scan = {
-      seq: ++scanSeq,
-      ids: matches.map((m) => m.store.id),
-      byCode: matches.some((m) => m.byCode),
-      nearCode: matches.some((m) => m.byNearCode),
-      invoice,
-    };
-    render();
-    $("storesBody").scrollTop = 0;
-    $("scanPanel").querySelector("details").open = false;
+    if (module === "invoice") await scanFromInvoice(invoice);
+    else await scanFromStores(invoice);
   } catch (e) {
     if (!(e instanceof PhotoError)) throw e;
     if (e.code !== "CANCELLED") toast(e.message || "No se pudo leer la factura.", "error");
@@ -183,17 +258,18 @@ $("scanAgain").addEventListener("click", scanInvoice);
 $("scanClose").addEventListener("click", closeScan);
 
 async function refresh({ force = false } = {}) {
-  if (!state.stores) setMsg("storesMsg", "Cargando tiendas…");
+  const current = module;
+  if (!storesOf(current)) setMsg("storesMsg", "Cargando…");
   const btn = $("refreshStores");
   btn.classList.add("spinning");
   try {
-    await loadStores({ force });
-    render();
+    await loadStores({ force, module: current });
+    if (current === module) render();
     if (force) toast("Listado actualizado.");
   } catch (e) {
     const message = handleDataError(e, { silent: true });
-    if (message) {
-      if (state.stores) toast(message, "error");
+    if (message && current === module) {
+      if (storesOf(current)) toast(message, "error");
       else setMsg("storesMsg", message, "error");
     }
   } finally {
@@ -229,9 +305,16 @@ for (const btn of document.querySelectorAll(".filter")) {
   });
 }
 
+// Cambiar de pestaña no apila historial (igual que la barra inferior).
+for (const tab of document.querySelectorAll(".module-tab")) {
+  tab.addEventListener("click", () => {
+    if (tab.dataset.module !== module) go(MODULES[tab.dataset.module].base, { replace: true });
+  });
+}
+
 $("stores").addEventListener("click", (e) => {
   const item = e.target.closest(".store-item");
-  if (item) go(`/tiendas/${item.dataset.id}`);
+  if (item) go(`${MODULES[module].base}/${item.dataset.id}`);
 });
 
 $("refreshStores").addEventListener("click", () => refresh({ force: true }));
@@ -245,10 +328,32 @@ $("lockBtn").addEventListener("click", async () => {
   if (ok) lockApp();
 });
 
-export const storesScreen = {
-  id: "screenStores",
-  enter() {
-    render();
-    refresh();
-  },
-};
+function listScreen(key) {
+  return {
+    id: "screenStores",
+    enter() {
+      if (module !== key) {
+        // Otro módulo: se sale del escaneo y de la búsqueda de la pestaña anterior.
+        module = key;
+        scan = null;
+        $("storeSearch").value = "";
+        $("stores").innerHTML = "";
+        $("storesSummary").textContent = "";
+        for (const id of ["countAll", "countPending", "countDone"]) $(id).textContent = "";
+        setMsg("storesMsg", "");
+        $("storesBody").scrollTop = 0;
+        renderedKey = "";
+      }
+      // Desde Por factura el escaneo abre el registro: no hay panel de coincidencias.
+      $("scanInvoice").querySelector("span").textContent =
+        module === "invoice" ? "Escanear factura y registrar" : "Escanear factura";
+      renderTabs();
+      if (!storesOf(module)) $("scanPanel").hidden = true;
+      render();
+      refresh();
+    },
+  };
+}
+
+export const storesScreen = listScreen("stores");
+export const invoiceStoresScreen = listScreen("invoice");

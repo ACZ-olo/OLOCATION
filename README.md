@@ -11,7 +11,8 @@ historial de sus cambios de ubicación.
 |---|---|
 | **Acceso** | Contraseña general (la misma para todos). Opción de recordar el dispositivo. |
 | **Tiendas** | Listado con buscador (nombre, código o dirección), filtros *Todas / Sin registrar / Registradas* y la coordenada vigente de cada tienda. |
-| **Escanear factura** | Foto de la factura → lee el texto (OCR) y muestra la tienda que le corresponde. No guarda la foto. |
+| **Por factura** | Segunda pestaña del listado: los clientes registrados al escanear facturas, con código, nombre, dirección y observaciones tal cual la factura. Coordenada e historial propios (independientes de *Tiendas*). |
+| **Escanear factura** | Foto de la factura → lee el texto (OCR). Si el código no está en *Por factura*, lo registra ahí (sin código o nombre legibles no registra). Desde *Tiendas* además muestra la tienda que le corresponde; desde *Por factura* abre el registro. No guarda la foto. |
 | **Tienda** | Datos, coordenada vigente, conteo e historial de cambios (se pueden borrar registros) y el botón **Guardar ubicación**. |
 | **Guardar ubicación** | Mide el GPS del teléfono (hasta ~12 s, se queda con la lectura más precisa) y la guarda. No se puede elegir un punto a mano. |
 | **Respaldo** | Descargar / restaurar un respaldo completo (JSON) y descargar las tiendas en CSV. |

@@ -30,6 +30,13 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
 - `supabase/migrations/20261016100000_invoices.sql` y `20261021100000_remove_invoices.sql`: el
   registro de fotos de facturas se agregó y después se quitó (la segunda borra la tabla
   `store_invoices` y sus funciones). Hoy la app solo escanea la factura con OCR y no la guarda.
+- `supabase/migrations/20261026090000_invoice_stores.sql`: módulo **Por factura**. Tablas
+  `invoice_stores` (código, nombre, dirección y observaciones tal cual la factura; un registro por
+  código, sin importar ceros a la izquierda) e `invoice_store_location_changes` (coordenada e
+  historial propios). RPC `list_invoice_stores`, `register_invoice_store` (si el código ya existe
+  lo deja como está), `list_invoice_store_location_changes`, `register_invoice_store_location`,
+  `delete_invoice_store_location_change`. El respaldo agrega `invoiceStores` (un respaldo sin esa
+  clave no toca este módulo).
   Aplicar las migraciones **en orden** (por nombre de archivo).
 - Para aplicar una migración nueva desde el PC (psql): connection string del botón **Connect →
   Session pooler** del proyecto, `psql "<connection string>" -1 -v ON_ERROR_STOP=1 -f archivo.sql`.
