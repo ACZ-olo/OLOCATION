@@ -34,15 +34,28 @@ function cut(value) {
   return clean(m ? text.slice(0, m.index) : text).replace(/^[^\p{L}\p{N}]+/u, "");
 }
 
+// El código de cliente tiene siempre 9 números: con otra cantidad, la foto se leyó mal.
+export const CODE_DIGITS = 9;
+
 /**
- * Código numérico al principio del valor, corrigiendo letras que el OCR confunde con números
- * ("O2O21O215" → "020210215"). Devuelve "" si no hay código.
+ * Número al principio del valor, corrigiendo letras que el OCR confunde con números
+ * ("O2O21O215" → "020210215"). Devuelve "" si no hay un número.
+ */
+function numberOf(text) {
+  const fixed = text.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[sS]/g, "5").replace(/B/g, "8");
+  return /^\d[\d-]{3,}\d$/.test(fixed) ? fixed.replace(/\D/g, "") : "";
+}
+
+/**
+ * Código al principio del valor: { code } si tiene 9 números, si no { seen } con lo que se leyó
+ * (para avisar), o {} si no hay número.
  */
 function codeOf(value) {
   const [a = "", b = ""] = clean(value).split(" ");
-  const first = /^\d+$/.test(b) ? a + b : a; // "0202 10215": el OCR partió el número
-  const fixed = first.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[sS]/g, "5").replace(/B/g, "8");
-  return /^\d[\d-]{3,}\d$/.test(fixed) ? fixed.replace(/\D/g, "") : "";
+  // "0202 10215": el OCR a veces parte el número en dos.
+  const candidates = [/^\d+$/.test(b) ? numberOf(a + b) : "", numberOf(a)].filter(Boolean);
+  const code = candidates.find((c) => c.length === CODE_DIGITS);
+  return code ? { code } : candidates.length ? { seen: candidates[candidates.length - 1] } : {};
 }
 
 /** Texto de la etiqueta en adelante, dentro del mismo renglón ("NOMBRE: NOVAGRO" → "NOVAGRO"). */
@@ -89,12 +102,13 @@ function fromLayout(lines) {
   // CODIGO: también es el título de la columna de productos; vale el que tiene un número al lado.
   let codeLabel = null;
   for (const label of labelsOf(LABELS.code)) {
-    const code = codeOf(valueOf(label, LABELS.code));
+    const { code, seen } = codeOf(valueOf(label, LABELS.code));
     if (code) {
       fields.code = code;
       codeLabel = label;
       break;
     }
+    fields.codeSeen ||= seen;
   }
 
   const nameLabel = labelsOf(LABELS.name)[0];
@@ -132,7 +146,9 @@ function fromText(text) {
   const rows = String(text || "").split(/\r?\n/).map(clean).filter(Boolean);
   rows.forEach((row, i) => {
     if (!fields.code && LABELS.code.test(row)) {
-      fields.code = codeOf(afterLabel(row, LABELS.code) || rows[i + 1]);
+      const { code, seen } = codeOf(afterLabel(row, LABELS.code) || rows[i + 1]);
+      fields.code = code;
+      fields.codeSeen ||= seen;
     }
     const next = rows[i + 1] && !OTHER_LABEL.test(rows[i + 1]) ? cut(rows[i + 1]) : "";
     if (!fields.name && LABELS.name.test(row)) {
@@ -152,14 +168,19 @@ function fromText(text) {
 
 /**
  * Campos de la factura a partir del resultado del OCR ({ text, lines }).
- * Devuelve { code, name, address, notes, place, text } (los que no se encontraron quedan vacíos).
+ * Devuelve { code, name, address, notes, place, text, codeSeen, codeConflict } (los que no se
+ * encontraron quedan vacíos). Antes de usarlos, revisar invoiceProblem().
  */
 export function parseInvoice({ text = "", lines = [] } = {}) {
   const usable = lines.filter((l) => l.box && clean(l.text));
   const layout = usable.length ? fromLayout(usable) : {};
   const plain = fromText(text);
+  // El código se busca por posición y en el texto corrido: si dan distinto, no es confiable.
+  const codeConflict = Boolean(layout.code && plain.code && layout.code !== plain.code);
   const fields = {
-    code: layout.code || plain.code || "",
+    code: codeConflict ? "" : layout.code || plain.code || "",
+    codeSeen: layout.codeSeen || plain.codeSeen || "",
+    codeConflict,
     name: layout.name || plain.name || "",
     address: layout.address || plain.address || "",
     notes: layout.notes || plain.notes || "",
@@ -169,4 +190,25 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
   fields.place = cut(place);
   fields.text = text;
   return fields;
+}
+
+const letters = (s) => (String(s || "").match(/\p{L}/gu) || []).length;
+
+/**
+ * Qué salió mal al leer la factura (para pedir otra foto), o "" si el código y el nombre se
+ * leyeron bien. Lo más importante es el código: sin un código de 9 números no se registra nada.
+ */
+export function invoiceProblem({ code, codeSeen, codeConflict, name }) {
+  if (!code) {
+    if (codeConflict) return "El código del cliente no se leyó con claridad.";
+    if (codeSeen) {
+      return `Se leyó el código ${codeSeen} (${codeSeen.length} números), pero debe tener ${CODE_DIGITS}.`;
+    }
+    return "No se logró leer el código del cliente.";
+  }
+  // Un nombre de verdad tiene letras; basura del OCR suele ser casi todo símbolos.
+  if (letters(name) < 3 || letters(name) < name.replace(/\s/g, "").length / 2) {
+    return "No se logró leer el nombre del cliente.";
+  }
+  return "";
 }

@@ -11,7 +11,7 @@
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
-import { parseInvoice } from "../lib/invoice.js";
+import { invoiceProblem, parseInvoice } from "../lib/invoice.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
 import { PhotoError } from "../lib/photo.js";
@@ -209,9 +209,19 @@ export function clearScan() {
   scan = null;
 }
 
-/** Qué faltó leer para poder registrar en el registro nuevo ("el código", "el nombre"…), o "". */
-const missingFields = ({ code, name }) =>
-  [!code && "el código", !name && "el nombre"].filter(Boolean).join(" ni ");
+/**
+ * La foto no se leyó bien: no se registra nada y se pide otra. Devuelve true si quiere
+ * volver a tomar la foto.
+ */
+const askRetake = (problem) =>
+  confirmDialog({
+    title: "No se logró leer bien la factura",
+    body:
+      `<p><strong>${escapeHtml(problem)}</strong></p>` +
+      `<p class="muted">No se registró nada. Tomá otra foto con buena luz, la factura derecha y ` +
+      `completa, sin sombras ni movimiento, y que el código del cliente se vea nítido.</p>`,
+    accept: "Tomar otra foto",
+  });
 
 /**
  * Registra el cliente de la factura en el registro nuevo. Si el código ya estaba, el registro
@@ -239,10 +249,10 @@ function showScan(fields) {
 /** Escaneo desde el registro viejo (admin): coincidencias como siempre + registro nuevo. */
 async function scanFromStores(invoice) {
   const matches = matchInvoice(invoice, state.stores);
-  const missing = missingFields(invoice);
+  const problem = invoiceProblem(invoice);
   let registered;
-  if (missing) {
-    registered = { text: `No se guardó en el registro nuevo: no se pudo leer ${missing}.`, tone: "warn" };
+  if (problem) {
+    registered = { text: `No se guardó en el registro nuevo. ${problem} Escaneá de nuevo con una foto más clara.`, tone: "warn" };
   } else {
     const result = await registerFromInvoice(invoice);
     registered = !result
@@ -265,21 +275,22 @@ async function scanFromStores(invoice) {
 /**
  * Escaneo desde el registro nuevo: registra (si no estaba). El admin va directo al registro;
  * al transportista se le muestra la tienda para que la toque (ficha → guardar ubicación).
+ * Devuelve true si hay que volver a tomar la foto.
  */
 async function scanFromInvoice(invoice) {
-  const missing = missingFields(invoice);
-  if (missing) {
-    toast(`No se pudo leer ${missing} de la factura. Escaneá de nuevo con buena luz.`, "error");
-    return;
+  const problem = invoiceProblem(invoice);
+  if (problem) {
+    if (scan) closeScan(); // que no quede a la vista la tienda del escaneo anterior
+    return askRetake(problem);
   }
   const result = await registerFromInvoice(invoice);
-  if (!result) return;
+  if (!result) return false;
   if (isAdmin()) {
     toast(result.created ? "Cliente registrado." : "Este cliente ya estaba registrado.", result.created ? "ok" : "");
     go(`${MODULES.invoice.base}/${result.store.id}`);
-    return;
+    return false;
   }
-  if (module !== "invoice") return;
+  if (module !== "invoice") return false;
   showScan({
     module: "invoice",
     ids: [result.store.id],
@@ -287,6 +298,7 @@ async function scanFromInvoice(invoice) {
     invoice,
     registered: { text: "", tone: "" },
   });
+  return false;
 }
 
 async function scanInvoice() {
@@ -299,9 +311,10 @@ async function scanInvoice() {
   const btns = [$("scanInvoice"), $("scanAgain")];
   for (const b of btns) b.disabled = true;
   $("scanInvoice").classList.add("busy");
+  let retake = false;
   try {
     const invoice = parseInvoice(await scanInvoiceText());
-    if (module === "invoice") await scanFromInvoice(invoice);
+    if (module === "invoice") retake = await scanFromInvoice(invoice);
     else await scanFromStores(invoice);
   } catch (e) {
     if (!(e instanceof PhotoError)) throw e;
@@ -311,6 +324,7 @@ async function scanInvoice() {
     for (const b of btns) b.disabled = false;
     $("scanInvoice").classList.remove("busy");
   }
+  if (retake) scanInvoice();
 }
 
 $("scanInvoice").addEventListener("click", scanInvoice);

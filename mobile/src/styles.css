@@ -512,6 +512,18 @@ body[data-role="empleado"] .scan-btn {
 /* ---- Escanear factura ---- */
 .scan-btn { display: flex; min-height: 52px; border-radius: 14px; font-size: 1.02rem; box-shadow: var(--shadow); }
 .scan-btn.busy .ic { animation: spin 1.2s linear infinite; }
+.scan-tip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.scan-tip .ic { flex: 0 0 auto; margin-top: 1px; color: var(--primary); }
+.scan-tip strong { color: var(--text); }
 .scan-panel { border: 1.5px solid var(--primary); margin-bottom: 20px; }
 .scan-head { display: flex; align-items: center; gap: 14px; }
 .scan-head-txt { min-width: 0; }
