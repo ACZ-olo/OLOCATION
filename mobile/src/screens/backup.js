@@ -67,6 +67,12 @@ $("exportCsv").addEventListener("click", (e) =>
   })
 );
 
+/** "3 tiendas y 1 registro de ubicación". */
+function counts(stores, changes) {
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  return `${n(stores, "tienda", "tiendas")} y ${n(changes, "registro de ubicación", "registros de ubicación")}`;
+}
+
 /** Validación básica del archivo antes de enviarlo (el servidor valida todo en detalle). */
 function parseBackup(text) {
   let data;
@@ -104,10 +110,10 @@ $("importBackup").addEventListener("click", async (e) => {
     title: "¿Restaurar este respaldo?",
     body:
       `<p class="dialog-coords">${escapeHtml(file.name)}</p>` +
-      `<p>${backup.stores.length} tienda(s) y ${countChanges(backup.stores)} registro(s) de ubicación` +
+      `<p>Registro viejo: ${counts(backup.stores.length, countChanges(backup.stores))}.<br>` +
       (invoice
-        ? `; registro nuevo: ${invoice.length} cliente(s) y ${countChanges(invoice)} registro(s).`
-        : `.<br><span class="muted">Este respaldo no trae el registro nuevo: ese módulo no se modifica.</span>`) +
+        ? `Registro nuevo: ${counts(invoice.length, countChanges(invoice))}.`
+        : `<span class="muted">Este respaldo no trae el registro nuevo: ese registro no se modifica.</span>`) +
       (backup.exportedAt ? `<br><span class="muted">Guardado el ${escapeHtml(formatDateTime(backup.exportedAt))}</span>` : "") +
       `</p><p class="warn"><strong>Se borran todos los datos actuales</strong> y se reemplazan por los del ` +
       `archivo. No se puede deshacer: si no tenés un respaldo de lo actual, descargalo primero.</p>`,
@@ -119,8 +125,8 @@ $("importBackup").addEventListener("click", async (e) => {
     resetState(); // el listado se vuelve a cargar al abrir Tiendas
     setMsg(
       "backupMsg",
-      `Respaldo restaurado: ${result.stores} tienda(s) y ${result.changes} registro(s)` +
-        (invoice ? `; registro nuevo: ${result.invoiceStores} cliente(s) y ${result.invoiceChanges} registro(s).` : "."),
+      `Respaldo restaurado. Registro viejo: ${counts(result.stores, result.changes)}.` +
+        (invoice ? ` Registro nuevo: ${counts(result.invoiceStores, result.invoiceChanges)}.` : ""),
       "ok"
     );
     toast("Respaldo restaurado.", "ok");

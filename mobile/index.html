@@ -113,14 +113,14 @@
       <!-- Controles dentro del área que se desplaza: la lista usa toda la pantalla.
            admin-only: el transportista solo ve el botón de escanear y la lista. -->
       <div class="list-controls">
-        <div class="module-tabs admin-only" role="tablist" aria-label="Módulo">
-          <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Registro viejo</button>
-          <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Registro nuevo</button>
+        <div class="module-tabs admin-only" role="group" aria-label="Registro">
+          <button class="module-tab on" type="button" aria-pressed="true" data-module="stores">Registro viejo</button>
+          <button class="module-tab" type="button" aria-pressed="false" data-module="invoice">Registro nuevo</button>
         </div>
         <div class="search admin-only">
-          <svg class="ic"><use href="#i-search"/></svg>
-          <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
-                 enterkeyhint="search" aria-label="Buscar tienda" />
+          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="storeSearch" type="search" placeholder="Nombre, código o zona" autocomplete="off"
+                 enterkeyhint="search" aria-label="Buscar tienda por nombre, código o zona" />
           <button id="clearSearch" class="icon-btn small" type="button" aria-label="Borrar búsqueda" hidden>
             <svg class="ic"><use href="#i-close"/></svg>
           </button>
@@ -128,10 +128,10 @@
         <button id="scanInvoice" class="btn filled block scan-btn" type="button">
           <svg class="ic"><use href="#i-scan"/></svg> <span>Escanear factura</span>
         </button>
-        <div class="filters admin-only" role="radiogroup" aria-label="Filtrar tiendas">
-          <button class="filter on" type="button" role="radio" aria-checked="true" data-filter="all"><span id="countAll" class="filter-count"></span>Todas</button>
-          <button class="filter" type="button" role="radio" aria-checked="false" data-filter="pending"><span id="countPending" class="filter-count"></span>Sin registrar</button>
-          <button class="filter" type="button" role="radio" aria-checked="false" data-filter="done"><span id="countDone" class="filter-count"></span>Registradas</button>
+        <div class="filters admin-only" role="group" aria-label="Filtrar tiendas">
+          <button class="filter on" type="button" aria-pressed="true" data-filter="all"><span id="countAll" class="filter-count"></span>Todas</button>
+          <button class="filter" type="button" aria-pressed="false" data-filter="pending"><span id="countPending" class="filter-count"></span>Sin registrar</button>
+          <button class="filter" type="button" aria-pressed="false" data-filter="done"><span id="countDone" class="filter-count"></span>Registradas</button>
         </div>
       </div>
       <div id="scanPanel" class="card scan-panel" hidden>
@@ -211,9 +211,9 @@
       <div class="card action-card">
         <span class="lead"><svg class="ic"><use href="#i-table"/></svg></span>
         <div class="action-txt">
-          <h2>Tiendas en CSV</h2>
-          <p>Listado de tiendas con su coordenada actual, cantidad de cambios y fecha del último
-             registro. Se abre en Excel.</p>
+          <h2>Registro viejo en CSV</h2>
+          <p>Tiendas del registro viejo con su coordenada actual, cantidad de cambios y fecha del
+             último registro. Se abre en Excel.</p>
           <button id="exportCsv" class="btn tonal" type="button">
             <svg class="ic sm"><use href="#i-download"/></svg> Descargar CSV
           </button>

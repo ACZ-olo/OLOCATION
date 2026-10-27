@@ -20,7 +20,8 @@
   --bg: #f2f4f5;
   --surface: #ffffff;
   --surface-2: #e9eef2;
-  --outline: #cfd6da;
+  --outline: #cfd6da;          /* separadores y bordes decorativos */
+  --field-line: #7f8a8f;       /* borde de campos y filtros: ≥ 3:1 contra fondo y superficie (WCAG 1.4.11) */
   --text: #251e1f;
   --muted: #5d6668;
   --primary: #00866a;          /* verde OLO oscurecido: texto blanco legible (AA) */
@@ -30,14 +31,16 @@
   --bar: #ffffff;              /* barra superior: blanca, con línea divisoria */
   --on-bar: #251e1f;
   --bar-line: #e1e6e9;
-  --hero: #251e1f;             /* fondo de la pantalla de acceso (carbón OLO) */
+  --hero: #ffffff;             /* cabecera de la pantalla de acceso (igual que la barra) */
+  --on-hero: #251e1f;
+  --on-hero-muted: #5d6668;
   --scrollbar: #c3cbd0;
   --tab-on: #ffffff;           /* pestaña activa (Registro viejo / nuevo) */
   --danger: #c62828;
   --danger-container: #fde8e8;
   --warn: #9a5b00;
   --warn-container: #fff1d6;
-  --pending: #8a6d00;
+  --pending: #735a00;          /* ≥ 4.5:1 sobre --pending-container */
   --pending-container: #fbf0c9;
   --shadow: 0 1px 2px rgba(37, 30, 31, 0.08), 0 2px 8px rgba(37, 30, 31, 0.06);
   --shadow-up: 0 -2px 12px rgba(37, 30, 31, 0.1);
@@ -51,6 +54,7 @@
   --surface: #272d31;
   --surface-2: #323a3f;
   --outline: #48525a;
+  --field-line: #7d8990;
   --text: #eef2f3;
   --muted: #a9b4ba;
   --primary: #4ab397;
@@ -61,6 +65,8 @@
   --on-bar: #ffffff;
   --bar-line: #363e43;
   --hero: #2b3236;
+  --on-hero: #ffffff;
+  --on-hero-muted: #c9d1d5;
   --scrollbar: #4f5a61;
   --tab-on: #48535b;
   --danger: #ff8a80;
@@ -112,6 +118,20 @@ button, input { font-family: inherit; }
 .muted { color: var(--muted); }
 .warn { color: var(--warn); }
 
+/* Foco visible y uniforme al navegar con teclado (no aparece al tocar). */
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.search input:focus-visible, .field input:focus-visible { outline: none; } /* su contenedor ya marca el foco */
+
+/* Hover solo con mouse: en el teléfono no deja botones "pegados" resaltados. */
+@media (hover: hover) {
+  .btn.filled:hover { filter: brightness(1.08); }
+  .btn.tonal:hover, .btn.text:hover { filter: brightness(0.97); }
+  .icon-btn:hover { background: rgba(127, 127, 127, 0.12); }
+  .store-item:hover { box-shadow: 0 0 0 1px var(--primary), var(--shadow); }
+  .filter:hover:not(.on), .module-tab:hover:not(.on) { color: var(--text); }
+  .nav-item:hover:not(.active) { color: var(--text); }
+}
+
 /* ---- Pantallas: cada .screen ocupa todo; solo una visible ---- */
 .screen {
   position: fixed;
@@ -153,7 +173,8 @@ button, input { font-family: inherit; }
   align-items: center;
   gap: 4px;
   min-height: calc(60px + var(--safe-top));
-  padding: var(--safe-top) 4px 0 16px;
+  /* En pantallas anchas, alineada con el contenido (máx. 640 px centrado). */
+  padding: var(--safe-top) max(4px, calc((100% - 640px) / 2 - 8px)) 0 max(16px, calc((100% - 640px) / 2));
   background: var(--bar);
   color: var(--on-bar);
   border-bottom: 1px solid var(--bar-line);
@@ -228,7 +249,7 @@ button, input { font-family: inherit; }
   width: 100%;
   height: 56px;
   padding: 18px 16px 0;
-  border: 1.5px solid var(--outline);
+  border: 1.5px solid var(--field-line);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
@@ -291,7 +312,7 @@ button, input { font-family: inherit; }
   margin: 0;
   border-radius: 999px;
   background: var(--surface-2);
-  border: 2px solid var(--outline);
+  border: 2px solid var(--field-line);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
 }
@@ -317,19 +338,19 @@ button, input { font-family: inherit; }
   flex: 0 0 auto;
   padding: calc(48px + var(--safe-top)) 24px 40px;
   text-align: center;
-  color: #ffffff;
+  color: var(--on-hero);
 }
 .hero-action { position: absolute; top: calc(8px + var(--safe-top)); right: 8px; }
-.access-logo { width: 132px; height: 61px; color: #ffffff; }
+.access-logo { width: 132px; height: 61px; color: var(--on-hero); }
 .access-app {
   margin: 16px 0 4px;
   font-family: var(--font-head);
   font-weight: 800;
   font-size: 1.1rem;
   letter-spacing: 0.28em;
-  color: var(--brand-light);
+  color: var(--primary);
 }
-.access-tag { margin: 0; font-size: 0.9rem; color: rgba(255, 255, 255, 0.72); }
+.access-tag { margin: 0; font-size: 0.9rem; color: var(--on-hero-muted); }
 .access-body {
   flex: 1 0 auto;
   background: var(--bg);
@@ -393,7 +414,7 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
   height: 50px;
   padding: 0 4px 0 14px;
   background: var(--surface);
-  border: 1px solid var(--outline);
+  border: 1px solid var(--field-line);
   border-radius: 14px;
   color: var(--muted);
 }
@@ -419,15 +440,15 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
   flex-direction: column;
   align-items: flex-start;
   gap: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--outline);
+  padding: 8px 10px;
+  border: 1px solid var(--field-line);
   border-radius: 12px;
   background: var(--surface);
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 500;
+  line-height: 1.25;
   text-align: left;
-  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -557,6 +578,7 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
   font-size: 0.82rem;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap; /* la coordenada no se parte en dos renglones */
 }
 .store-item .coords.none { color: var(--muted); font-style: italic; }
 .trail { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
@@ -574,6 +596,14 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 }
 .badge.muted { background: var(--pending-container); color: var(--pending); font-weight: 500; }
 .when { font-size: 0.75rem; color: var(--muted); }
+/* Teléfonos angostos (≤ 360 px): ícono y márgenes más chicos para que el texto tenga lugar. */
+@media (max-width: 360px) {
+  .screen-body.scroll { padding-left: 12px; padding-right: 12px; }
+  .store-item { gap: 10px; padding: 12px 10px 12px 12px; }
+  .store-item .lead { width: 36px; height: 36px; border-radius: 10px; }
+  .store-item .coords { font-size: 0.78rem; }
+  .badge { padding: 2px 6px; font-size: 0.75rem; }
+}
 .list-more { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 8px 16px 16px; }
 
 /* ---- Detalle de tienda ---- */
@@ -588,6 +618,13 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 .store-head-txt { min-width: 0; }
 .store-name { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; line-height: 1.25; }
 .store-meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
+#storeAddress { display: block; margin-top: 4px; overflow-wrap: anywhere; } /* la dirección va debajo del código */
+#storeAddress:empty { display: none; }
+@media (max-width: 360px) {
+  .store-head { align-items: flex-start; gap: 12px; }
+  .lead.big { width: 44px; height: 44px; border-radius: 12px; }
+  .store-name { font-size: 1.12rem; }
+}
 .store-notes[hidden] { display: none; }
 .store-notes .section-label { margin: 0 0 6px; }
 .store-notes p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
@@ -708,11 +745,13 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 .action-bar {
   flex: 0 0 auto;
   display: flex;
+  justify-content: center;
   gap: 12px;
   padding: 12px 16px calc(12px + var(--safe-bottom));
   background: var(--surface);
   box-shadow: var(--shadow-up);
 }
+.action-bar > .btn { max-width: 640px; }
 
 /* ---- Navegación inferior (Tiendas / Respaldo) ---- */
 .bottom-nav {
@@ -848,6 +887,10 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 .dialog {
   width: 100%;
   max-width: 400px;
+  /* Nunca más alto que la pantalla: el texto se desplaza y los botones quedan visibles. */
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
   padding: 24px 24px 16px;
   border-radius: 28px;
   background: var(--surface);
@@ -855,6 +898,7 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 .dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
+.dialog-body { min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
 .dialog-body p { margin: 0 0 8px; }
 .dialog-coords {
   padding: 8px 12px;
@@ -862,7 +906,7 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
   background: var(--surface-2);
   font-variant-numeric: tabular-nums;
 }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.dialog-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .dialog-actions .btn { min-height: 44px; }
 
 /* ---- Snackbar ---- */
@@ -894,4 +938,4 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 }
 
 /* Botón chico (recuadro de factura escaneada). */
-.btn.small { min-height: 36px; padding: 0 12px; font-size: 0.85rem; }
+.btn.small { min-height: 44px; padding: 0 14px; font-size: 0.9rem; } /* área táctil de 44 px */

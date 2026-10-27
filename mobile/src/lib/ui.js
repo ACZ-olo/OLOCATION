@@ -22,13 +22,15 @@ export function setMsg(id, message, kind = "") {
 let openDialog = null;
 
 /**
- * Diálogo de confirmación. Devuelve una promesa con true (aceptar) o false (cancelar/atrás).
- * `body` es HTML ya escapado.
+ * Diálogo de confirmación. Devuelve una promesa con true (aceptar) o false (cancelar/atrás/Esc).
+ * `body` es HTML ya escapado. Al cerrarse, el foco vuelve a donde estaba.
  */
 export function confirmDialog({ title, body, accept = "Aceptar", cancel = "Cancelar" }) {
   const dialog = $("dialog");
+  const opener = document.activeElement;
   $("dialogTitle").textContent = title;
   $("dialogBody").innerHTML = body;
+  $("dialogBody").scrollTop = 0;
   $("dialogAccept").textContent = accept;
   $("dialogCancel").textContent = cancel;
   dialog.hidden = false;
@@ -39,6 +41,7 @@ export function confirmDialog({ title, body, accept = "Aceptar", cancel = "Cance
       openDialog = null;
       dialog.classList.remove("open");
       dialog.hidden = true;
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
       resolve(result);
     };
   });
@@ -56,5 +59,17 @@ export function initDialog() {
   $("dialogCancel").addEventListener("click", () => openDialog?.(false));
   $("dialog").addEventListener("click", (e) => {
     if (e.target === $("dialog")) openDialog?.(false);
+  });
+  // Teclado: Esc cancela y Tab no sale del diálogo (solo tiene los dos botones).
+  document.addEventListener("keydown", (e) => {
+    if (!openDialog) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      openDialog(false);
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      const next = document.activeElement === $("dialogAccept") ? $("dialogCancel") : $("dialogAccept");
+      next.focus();
+    }
   });
 }

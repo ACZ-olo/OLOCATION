@@ -82,9 +82,12 @@ function renderTabs() {
   for (const tab of document.querySelectorAll(".module-tab")) {
     const on = tab.dataset.module === module;
     tab.classList.toggle("on", on);
-    tab.setAttribute("aria-selected", String(on));
+    tab.setAttribute("aria-pressed", String(on));
   }
 }
+
+/** "1 tienda", "3 tiendas". */
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function render({ force = false } = {}) {
   const all = storesOf(module);
@@ -109,8 +112,8 @@ function render({ force = false } = {}) {
   $("storesSummary").textContent = !all.length
     ? ""
     : query
-      ? `${items.length} resultado(s) para “${query}”`
-      : `${items.length} tienda(s)`;
+      ? `${plural(items.length, "resultado", "resultados")} para “${query}”`
+      : plural(items.length, "tienda", "tiendas");
 
   // Sin escaneo no hay "mejor coincidencia": la lista va en su orden normal.
   $("stores").innerHTML = items.slice(0, MAX_RENDERED).map((s) => storeItem(s)).join("");
@@ -152,7 +155,7 @@ function renderScan() {
         ? "Tienda nueva: quedó registrada con los datos de la factura. Tocala para guardar su ubicación."
         : "Esta es la tienda de la factura. Tocala para guardar su ubicación."
       : storesScanInfo(items, code);
-  $("storesSummary").textContent = items.length ? `${items.length} coincidencia(s)` : "";
+  $("storesSummary").textContent = items.length ? plural(items.length, "coincidencia", "coincidencias") : "";
   $("stores").innerHTML = items.map((s, i) => storeItem(s, i === 0 && items.length > 1)).join("");
   $("storesMore").hidden = true;
   setMsg(
@@ -331,7 +334,7 @@ for (const btn of document.querySelectorAll(".filter")) {
     for (const b of document.querySelectorAll(".filter")) {
       const on = b === btn;
       b.classList.toggle("on", on);
-      b.setAttribute("aria-checked", String(on));
+      b.setAttribute("aria-pressed", String(on));
     }
     render();
     $("storesBody").scrollTop = 0;
