@@ -87,7 +87,8 @@ function matchItem(s, created) {
     `<span class="match-label">${icon("i-check", "ic sm")}${created ? "Tienda nueva de la factura" : "Tienda de la factura"}</span>` +
     `<span class="match-main"><span class="lead big">${icon("i-store")}</span>` +
     `<span class="txt"><span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span></span></span>` +
-    `<span class="match-cta">${icon("i-pin", "ic sm")}Tocá para guardar su ubicación${icon("i-chev", "ic sm")}</span>` +
+    `<span class="match-cta"><span class="match-cta-icon">${icon("i-pin")}</span>` +
+    `<span class="match-cta-txt">Guardar ubicación</span>${icon("i-chev")}</span>` +
     `</button></li>`
   );
 }

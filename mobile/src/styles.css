@@ -388,10 +388,6 @@ body[data-role="empleado"] #storesBody.home { display: flex; flex-direction: col
 body[data-role="empleado"] #storesBody.home > :not(.list-controls) { display: none; }
 body[data-role="empleado"] #storesBody.home .list-controls { width: 100%; margin: auto; gap: 24px; }
 body[data-role="empleado"] #storesBody:not(.home) .list-controls { display: none; }
-/* Tras escanear: primero la tienda (destacada) y debajo lo leído de la factura. */
-body[data-role="empleado"] #storesBody:not(.home) { display: flex; flex-direction: column; }
-body[data-role="empleado"] #storesBody:not(.home) > * { width: 100%; }
-body[data-role="empleado"] #stores { order: -1; margin-bottom: 10px; }
 body[data-role="empleado"] #storesSummary { display: none; }
 body[data-role="empleado"] .scan-hero {
   display: flex;
@@ -581,15 +577,26 @@ body[data-role="empleado"] .scan-btn {
 .match-cta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 52px;
-  border-radius: 999px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 14px 0 8px;
+  border-radius: 14px;
   background: var(--primary);
   color: var(--on-primary);
   font-size: 1.05rem;
   font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
+.match-cta-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.match-cta-txt { flex: 1; }
 
 .section-label {
   margin: 4px 4px 8px;
