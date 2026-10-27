@@ -238,6 +238,9 @@ button, input { font-family: inherit; }
 .btn.tonal { background: var(--primary-container); color: var(--on-primary-container); }
 .btn.tonal:active { filter: brightness(0.95); }
 .btn.tonal.busy .ic { animation: spin 1.2s linear infinite; }
+.btn.danger { background: var(--danger-container); color: var(--danger); font-weight: 700; }
+.btn.danger:active { filter: brightness(0.95); }
+.top-bar .btn.danger { min-height: 40px; margin-right: 4px; gap: 6px; }
 .btn.text { background: transparent; color: var(--primary); padding: 0 16px; }
 .btn.text:active { background: var(--primary-container); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.4); }
