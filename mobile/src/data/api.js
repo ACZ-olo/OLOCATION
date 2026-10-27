@@ -50,7 +50,8 @@ async function request(path, { token, method = "GET", body } = {}) {
 }
 
 export async function verifyAccess(password) {
-  return request("/access", { method: "POST", body: { password } });
+  // El backend FastAPI tiene una sola contraseña con acceso completo.
+  return { ...(await request("/access", { method: "POST", body: { password } })), role: "admin" };
 }
 
 export async function listStores(token) {
@@ -79,9 +80,9 @@ export async function deleteLocationChange(token, storeId, changeId) {
   return request(`/stores/${storeId}/location-changes/${changeId}`, { token, method: "DELETE" });
 }
 
-// El módulo "Por factura" existe solo en Supabase: el backend FastAPI no tiene esos endpoints.
+// El registro nuevo existe solo en Supabase: el backend FastAPI no tiene esos endpoints.
 const invoiceModuleMissing = async () => {
-  throw new DataError("NOT_CONFIGURED", "El módulo Por factura solo está disponible con Supabase.");
+  throw new DataError("NOT_CONFIGURED", "El registro nuevo solo está disponible con Supabase.");
 };
 export const listInvoiceStores = invoiceModuleMissing;
 export const registerInvoiceStore = invoiceModuleMissing;

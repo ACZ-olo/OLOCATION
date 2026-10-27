@@ -2,7 +2,7 @@
  * Capa de datos de la app. Las pantallas solo usan estas funciones; el proveedor real se elige
  * con VITE_DATA_PROVIDER ("api" o "supabase") y ambos implementan la misma interfaz:
  *
- *   verifyAccess(password)              → { token, expiresAt }
+ *   verifyAccess(password)              → { token, expiresAt, role: "admin"|"empleado" }
  *   listStores(token)                   → Store[]
  *   listLocationChanges(token, storeId) → LocationChange[]   (más reciente primero)
  *   registerLocation(token, storeId, { latitude, longitude, source, accuracyM })
@@ -13,7 +13,7 @@
  *   restoreBackup(token, backup)        → { stores, changes, invoiceStores?, invoiceChanges? }
  *                                         (REEMPLAZA todos los datos)
  *
- * Módulo "Por factura" (clientes tal cual la factura escaneada; solo Supabase):
+ * Registro nuevo (clientes tal cual la factura escaneada; solo Supabase):
  *   listInvoiceStores(token)            → InvoiceStore[]
  *   registerInvoiceStore(token, { code, name, address, notes })
  *                                       → { store: InvoiceStore, created }  (si el código ya

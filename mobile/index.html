@@ -110,11 +110,12 @@
       </button>
     </header>
     <div class="search-bar">
-      <div class="module-tabs" role="tablist" aria-label="Módulo">
-        <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Tiendas</button>
-        <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Por factura</button>
+      <!-- admin-only: el transportista solo ve el botón de escanear y la lista -->
+      <div class="module-tabs admin-only" role="tablist" aria-label="Módulo">
+        <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Registro viejo</button>
+        <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Registro nuevo</button>
       </div>
-      <div class="search">
+      <div class="search admin-only">
         <svg class="ic"><use href="#i-search"/></svg>
         <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
                enterkeyhint="search" aria-label="Buscar tienda" />
@@ -125,7 +126,7 @@
       <button id="scanInvoice" class="btn tonal block scan-btn" type="button">
         <svg class="ic sm"><use href="#i-scan"/></svg> <span>Escanear factura</span>
       </button>
-      <div class="filters" role="radiogroup" aria-label="Filtrar tiendas">
+      <div class="filters admin-only" role="radiogroup" aria-label="Filtrar tiendas">
         <button class="filter on" type="button" role="radio" aria-checked="true" data-filter="all">Todas <span id="countAll"></span></button>
         <button class="filter" type="button" role="radio" aria-checked="false" data-filter="pending">Sin registrar <span id="countPending"></span></button>
         <button class="filter" type="button" role="radio" aria-checked="false" data-filter="done">Registradas <span id="countDone"></span></button>
@@ -142,7 +143,7 @@
         </div>
         <dl id="scanFields" class="scan-fields" hidden></dl>
         <p id="scanRegistered" class="scan-registered"></p>
-        <details class="scan-text">
+        <details class="scan-text admin-only">
           <summary>Ver texto leído</summary>
           <pre id="scanText"></pre>
         </details>
@@ -158,7 +159,7 @@
       <p id="storesMore" class="list-more" hidden></p>
       <p id="storesMsg" class="form-msg" aria-live="polite"></p>
     </div>
-    <nav class="bottom-nav" aria-label="Secciones">
+    <nav class="bottom-nav admin-only" aria-label="Secciones">
       <button class="nav-item active" type="button" aria-current="page" data-tab="/tiendas">
         <span class="nav-pill"><svg class="ic"><use href="#i-store"/></svg></span>
         <span>Tiendas</span>
@@ -185,7 +186,7 @@
         <span class="lead"><svg class="ic"><use href="#i-download"/></svg></span>
         <div class="action-txt">
           <h2>Guardar respaldo</h2>
-          <p>Descarga todas las tiendas (también las de <strong>Por factura</strong>) con su historial de
+          <p>Descarga todas las tiendas (registro viejo y <strong>registro nuevo</strong>) con su historial de
              cambios en un archivo <strong>JSON</strong>.
              Guardalo en un lugar seguro (Drive, correo…).</p>
           <button id="exportBackup" class="btn filled" type="button">

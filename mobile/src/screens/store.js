@@ -2,7 +2,7 @@
 // Sirve a los dos módulos (#/tiendas/:id y #/facturas/:id); cada uno con sus propios datos.
 import L from "leaflet";
 import { deleteLocationChange, listLocationChanges } from "../data/index.js";
-import { getToken } from "../lib/access.js";
+import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
@@ -37,7 +37,7 @@ function renderStore(store) {
   $("storeName").textContent = store.name;
   $("storeCode").textContent = store.code;
   $("storeAddress").textContent = store.address || "";
-  // Observaciones de la factura (solo en "Por factura").
+  // Observaciones de la factura (solo en el registro nuevo).
   $("storeNotesWrap").hidden = !store.notes;
   $("storeNotes").textContent = store.notes || "";
   $("storeChangeCount").textContent = store.changeCount;
@@ -81,8 +81,12 @@ function renderHistory(items) {
         `<div class="change-top"><span class="change-date">${escapeHtml(formatDateTime(c.createdAt))}</span>${sourceChip(c)}</div>` +
         `<span class="coords">${formatCoords(c.latitude, c.longitude)}</span>${previous}` +
         `</div>` +
-        `<button class="icon-btn small change-delete" type="button" data-id="${c.id}"` +
-        ` aria-label="Borrar registro #${total - i}" title="Borrar registro">${icon("i-trash")}</button></li>`
+        // Solo el admin borra registros del historial.
+        (isAdmin()
+          ? `<button class="icon-btn small change-delete" type="button" data-id="${c.id}"` +
+            ` aria-label="Borrar registro #${total - i}" title="Borrar registro">${icon("i-trash")}</button>`
+          : "") +
+        `</li>`
       );
     })
     .join("");
@@ -172,7 +176,13 @@ function detailScreen(key) {
         $("storeNotesWrap").hidden = true;
         $("screenStore").querySelector(".screen-body").scrollTop = 0;
       }
-      $("storeTitle").textContent = key === "invoice" ? "Por factura" : "Tienda";
+      $("storeTitle").textContent = !isAdmin()
+        ? "Tienda"
+        : key === "invoice"
+          ? "Registro nuevo"
+          : "Registro viejo";
+      // En el registro viejo ya no se registran ubicaciones.
+      $("goLocate").closest(".action-bar").hidden = key !== "invoice";
       let store = findStore(id, key);
       if (!store) {
         try {

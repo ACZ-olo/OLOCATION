@@ -98,7 +98,7 @@ $("importBackup").addEventListener("click", async (e) => {
     return;
   }
   const countChanges = (list) => list.reduce((n, s) => n + (Array.isArray(s.changes) ? s.changes.length : 0), 0);
-  // Respaldos anteriores al módulo "Por factura" no lo traen: ese módulo queda como está.
+  // Respaldos anteriores al registro nuevo no lo traen: ese módulo queda como está.
   const invoice = Array.isArray(backup.invoiceStores) ? backup.invoiceStores : null;
   const ok = await confirmDialog({
     title: "¿Restaurar este respaldo?",
@@ -106,8 +106,8 @@ $("importBackup").addEventListener("click", async (e) => {
       `<p class="dialog-coords">${escapeHtml(file.name)}</p>` +
       `<p>${backup.stores.length} tienda(s) y ${countChanges(backup.stores)} registro(s) de ubicación` +
       (invoice
-        ? `; Por factura: ${invoice.length} cliente(s) y ${countChanges(invoice)} registro(s).`
-        : `.<br><span class="muted">Este respaldo no trae Por factura: ese módulo no se modifica.</span>`) +
+        ? `; registro nuevo: ${invoice.length} cliente(s) y ${countChanges(invoice)} registro(s).`
+        : `.<br><span class="muted">Este respaldo no trae el registro nuevo: ese módulo no se modifica.</span>`) +
       (backup.exportedAt ? `<br><span class="muted">Guardado el ${escapeHtml(formatDateTime(backup.exportedAt))}</span>` : "") +
       `</p><p class="warn"><strong>Se borran todos los datos actuales</strong> y se reemplazan por los del ` +
       `archivo. No se puede deshacer: si no tenés un respaldo de lo actual, descargalo primero.</p>`,
@@ -120,7 +120,7 @@ $("importBackup").addEventListener("click", async (e) => {
     setMsg(
       "backupMsg",
       `Respaldo restaurado: ${result.stores} tienda(s) y ${result.changes} registro(s)` +
-        (invoice ? `; Por factura: ${result.invoiceStores} cliente(s) y ${result.invoiceChanges} registro(s).` : "."),
+        (invoice ? `; registro nuevo: ${result.invoiceStores} cliente(s) y ${result.invoiceChanges} registro(s).` : "."),
       "ok"
     );
     toast("Respaldo restaurado.", "ok");

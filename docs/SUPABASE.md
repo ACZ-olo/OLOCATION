@@ -37,6 +37,11 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   lo deja como está), `list_invoice_store_location_changes`, `register_invoice_store_location`,
   `delete_invoice_store_location_change`. El respaldo agrega `invoiceStores` (un respaldo sin esa
   clave no toca este módulo).
+- `supabase/migrations/20261027090000_roles.sql`: dos contraseñas. **admin** (`admin_password_hash`,
+  inicial `admin123`) ve registro viejo, registro nuevo y respaldo; **empleado**
+  (`access_password_hash`, la de siempre) solo usa el registro nuevo y no borra historial.
+  `verify_access` devuelve `role`; las funciones de admin lanzan `FORBIDDEN` con un empleado. En
+  el registro viejo ya no se registran ubicaciones. Las sesiones previas quedan como empleado.
   Aplicar las migraciones **en orden** (por nombre de archivo).
 - Para aplicar una migración nueva desde el PC (psql): connection string del botón **Connect →
   Session pooler** del proyecto, `psql "<connection string>" -1 -v ON_ERROR_STOP=1 -f archivo.sql`.

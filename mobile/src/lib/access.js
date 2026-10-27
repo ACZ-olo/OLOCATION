@@ -23,6 +23,12 @@ export function getAccess() {
 
 export const getToken = () => getAccess()?.token || null;
 
+/**
+ * true con la contraseña de admin. Un acceso guardado antes de que existieran los roles no trae
+ * "role": en el servidor esas sesiones quedaron como empleado.
+ */
+export const isAdmin = () => getAccess()?.role === "admin";
+
 export function saveAccess(access, remember) {
   clearAccess();
   const [local, session] = stores();

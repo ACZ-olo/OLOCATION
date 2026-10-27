@@ -9,13 +9,14 @@ historial de sus cambios de ubicación.
 
 | Pantalla | Qué se puede hacer |
 |---|---|
-| **Acceso** | Contraseña general (la misma para todos). Opción de recordar el dispositivo. |
-| **Tiendas** | Listado con buscador (nombre, código o dirección), filtros *Todas / Sin registrar / Registradas* y la coordenada vigente de cada tienda. |
-| **Por factura** | Segunda pestaña del listado: los clientes registrados al escanear facturas, con código, nombre, dirección y observaciones tal cual la factura. Coordenada e historial propios (independientes de *Tiendas*). |
-| **Escanear factura** | Foto de la factura → lee el texto (OCR). Si el código no está en *Por factura*, lo registra ahí (sin código o nombre legibles no registra). Desde *Tiendas* además muestra la tienda que le corresponde; desde *Por factura* abre el registro. No guarda la foto. |
-| **Tienda** | Datos, coordenada vigente, conteo e historial de cambios (se pueden borrar registros) y el botón **Guardar ubicación**. |
+| **Acceso** | Dos contraseñas: **admin** y **empleados** (transportistas). Opción de recordar el dispositivo. |
+| **Transportista: Tiendas** | Botón grande **Escanear factura** y la lista de tiendas del registro nuevo (sin buscador ni filtros). Al escanear se muestra la tienda de la factura (registrándola si era nueva); se toca → ficha → **Guardar ubicación** → vuelve al inicio. No borra historial. |
+| **Admin: Registro viejo** | El listado original, con buscador y filtros. Solo consulta y borrado de historial: ya no se registran ubicaciones. |
+| **Admin: Registro nuevo** | Los clientes registrados al escanear facturas, con código, nombre, dirección y observaciones tal cual la factura. Coordenada e historial propios. |
+| **Escanear factura** | Foto de la factura → lee el texto (OCR). Si el código no está en el registro nuevo, lo registra (sin código o nombre legibles no registra). Admin: desde el registro viejo muestra las coincidencias; desde el nuevo abre el registro. No guarda la foto. |
+| **Tienda** | Datos, coordenada vigente, conteo e historial de cambios y el botón **Guardar ubicación** (solo en el registro nuevo). |
 | **Guardar ubicación** | Mide el GPS del teléfono (hasta ~12 s, se queda con la lectura más precisa) y la guarda. No se puede elegir un punto a mano. |
-| **Respaldo** | Descargar / restaurar un respaldo completo (JSON) y descargar las tiendas en CSV. |
+| **Respaldo** (solo admin) | Descargar / restaurar un respaldo completo (JSON) y descargar las tiendas en CSV. |
 
 ### Cómo elige la tienda el escaneo de factura
 

@@ -6,6 +6,7 @@
  *   STORE_NOT_FOUND     la tienda no existe
  *   CHANGE_NOT_FOUND    el registro de ubicación no existe (p. ej. ya lo borró otra persona)
  *   VALIDATION_ERROR    datos inválidos
+ *   FORBIDDEN           el rol (empleado) no tiene permiso para esa acción
  *   NETWORK             sin conexión con el servidor
  *   NOT_CONFIGURED      falta configuración (contraseña en el servidor, claves de Supabase…)
  *   UNKNOWN             cualquier otro

@@ -33,6 +33,7 @@ const KNOWN_CODES = [
   "STORE_NOT_FOUND",
   "CHANGE_NOT_FOUND",
   "VALIDATION_ERROR",
+  "FORBIDDEN",
 ];
 
 async function rpc(name, params) {
@@ -87,7 +88,7 @@ export async function verifyAccess(password) {
     const code = KNOWN_CODES.includes(data.error) ? data.error : "UNKNOWN";
     throw new DataError(code, data.message || "No se pudo verificar la contraseña.");
   }
-  return { token: data.token, expiresAt: data.expires_at };
+  return { token: data.token, expiresAt: data.expires_at, role: data.role };
 }
 
 export async function listStores(token) {
@@ -129,7 +130,7 @@ export async function deleteLocationChange(token, storeId, changeId) {
   return { store: toStore(data.store) };
 }
 
-// Módulo "Por factura" (supabase/migrations/20261026090000_invoice_stores.sql).
+// Registro nuevo (supabase/migrations/20261026090000_invoice_stores.sql).
 
 export async function listInvoiceStores(token) {
   return (await rpc("list_invoice_stores", { p_token: token })).map(toInvoiceStore);

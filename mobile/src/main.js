@@ -9,13 +9,13 @@ import "./styles.css";
 
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { getAccess } from "./lib/access.js";
+import { getAccess, isAdmin } from "./lib/access.js";
 import { initTheme } from "./lib/theme.js";
 import { closeDialog, initDialog } from "./lib/ui.js";
 import { atRoot, back, go, route, setGuard, startRouter } from "./router.js";
 import { accessScreen } from "./screens/access.js";
 import { backupScreen } from "./screens/backup.js";
-import { invoiceLocateScreen, locateScreen } from "./screens/locate.js";
+import { invoiceLocateScreen } from "./screens/locate.js";
 import { invoiceStoreScreen, storeScreen } from "./screens/store.js";
 import { invoiceStoresScreen, storesScreen } from "./screens/stores.js";
 
@@ -23,10 +23,10 @@ initTheme();
 initDialog();
 
 route("/acceso", accessScreen);
+// "Registro viejo" (solo admin). Ahí ya no se registran ubicaciones: no hay ruta /ubicar.
 route("/tiendas", storesScreen);
 route("/tiendas/:id", storeScreen);
-route("/tiendas/:id/ubicar", locateScreen);
-// Módulo "Por factura": mismas pantallas, con sus propios datos.
+// "Registro nuevo" (admin) = "Tiendas" del transportista: mismas pantallas, con sus propios datos.
 route("/facturas", invoiceStoresScreen);
 route("/facturas/:id", invoiceStoreScreen);
 route("/facturas/:id/ubicar", invoiceLocateScreen);
@@ -39,10 +39,15 @@ for (const tab of document.querySelectorAll(".nav-item[data-tab]")) {
   });
 }
 
-// Sin acceso vigente, todo lleva a la pantalla de contraseña.
+// Sin acceso vigente, todo lleva a la pantalla de contraseña. El transportista (empleado) solo
+// usa el registro nuevo: el registro viejo y el respaldo son del admin.
+const home = () => (isAdmin() ? "/tiendas" : "/facturas");
 setGuard((path, screen) => {
-  if (screen === accessScreen) return getAccess() ? "/tiendas" : null;
-  return getAccess() ? null : "/acceso";
+  document.body.dataset.role = isAdmin() ? "admin" : "empleado";
+  if (screen === accessScreen) return getAccess() ? home() : null;
+  if (!getAccess()) return "/acceso";
+  if (!isAdmin() && /^\/(tiendas|respaldo)\b/.test(path)) return "/facturas";
+  return null;
 });
 
 for (const btn of document.querySelectorAll(".nav-back")) btn.addEventListener("click", back);

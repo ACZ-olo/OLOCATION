@@ -16,8 +16,9 @@ const STALE_MS = 60_000; // el listado se refresca solo si tiene más de un minu
 /**
  * Los dos módulos de tiendas. Comparten pantallas; cada uno tiene su listado, su ruta y sus
  * funciones de datos (la coordenada y el historial de cada módulo son independientes).
- *   stores   el listado de tiendas cargado por el administrador
- *   invoice  "Por factura": los clientes tal cual figuran en las facturas escaneadas
+ *   stores   "Registro viejo" (solo admin): el listado de tiendas cargado por el administrador
+ *   invoice  "Registro nuevo" ("Tiendas" para el transportista): los clientes tal cual figuran
+ *            en las facturas escaneadas
  */
 export const MODULES = {
   stores: {
@@ -40,7 +41,7 @@ export const MODULES = {
 
 export const state = {
   stores: null, // Store[] ordenado por nombre
-  invoiceStores: null, // InvoiceStore[] ordenado por nombre (módulo "Por factura")
+  invoiceStores: null, // InvoiceStore[] ordenado por nombre (registro nuevo)
   version: 0, // sube cada vez que cambia algún listado (para no redibujar de más)
 };
 

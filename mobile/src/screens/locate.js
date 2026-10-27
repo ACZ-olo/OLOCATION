@@ -3,12 +3,12 @@
 // Sirve a los dos módulos (#/tiendas/:id/ubicar y #/facturas/:id/ubicar).
 import L from "leaflet";
 import { DEFAULT_CENTER, GPS_LOW_ACCURACY_M } from "../config.js";
-import { getToken } from "../lib/access.js";
+import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords } from "../lib/format.js";
 import { locateBest } from "../lib/geo.js";
 import { currentPin, newPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, toast } from "../lib/ui.js";
-import { back } from "../router.js";
+import { back, go } from "../router.js";
 import { MODULES, findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
@@ -156,7 +156,9 @@ $("saveLocation").addEventListener("click", async () => {
     const result = await MODULES[module].registerLocation(getToken(), store.id, p);
     updateStore(result.store, module);
     toast(`Ubicación guardada · cambio n.º ${result.store.changeCount}`, "ok");
-    back();
+    // El transportista termina acá: vuelve al inicio, listo para la próxima factura.
+    if (isAdmin()) back();
+    else go(MODULES[module].base, { replace: true });
   } catch (e) {
     handleDataError(e);
     btn.disabled = false;
@@ -211,5 +213,5 @@ function locateScreenFor(key) {
   };
 }
 
-export const locateScreen = locateScreenFor("stores");
+// Solo el registro nuevo: en el registro viejo ya no se registran ubicaciones.
 export const invoiceLocateScreen = locateScreenFor("invoice");

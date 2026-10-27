@@ -335,7 +335,12 @@ button, input { font-family: inherit; }
 }
 .search-bar > * { max-width: 640px; margin-left: auto; margin-right: auto; }
 
-/* ---- Pestañas de módulo (Tiendas / Por factura) ---- */
+/* ---- Vista del transportista (body[data-role="empleado"], ver main.js) ----
+   Sin pestañas, buscador, filtros ni Respaldo: solo el botón de escanear (grande) y la lista. */
+body[data-role="empleado"] .admin-only { display: none !important; }
+body[data-role="empleado"] .scan-btn { min-height: 64px; margin-top: 4px; font-size: 1.1rem; }
+
+/* ---- Pestañas de módulo (Registro viejo / Registro nuevo, solo admin) ---- */
 .module-tabs {
   display: flex;
   gap: 4px;
