@@ -38,6 +38,8 @@
   --tab-on: #ffffff;           /* pestaña activa (Registro viejo / nuevo) */
   --danger: #c62828;
   --danger-container: #fde8e8;
+  --danger-muted: #a3554f;        /* rojo apagado: acciones peligrosas que no deben resaltar */
+  --danger-muted-line: #e3c4c1;
   --warn: #9a5b00;
   --warn-container: #fff1d6;
   --pending: #735a00;          /* ≥ 4.5:1 sobre --pending-container */
@@ -71,6 +73,8 @@
   --tab-on: #353c41;
   --danger: #ff8a80;
   --danger-container: #3d1c1c;
+  --danger-muted: #c99590;
+  --danger-muted-line: #4a3533;
   --warn: #ffc56b;
   --warn-container: #3a2c12;
   --pending: #f0cf6a;
@@ -238,8 +242,8 @@ button, input { font-family: inherit; }
 .btn.tonal { background: var(--primary-container); color: var(--on-primary-container); }
 .btn.tonal:active { filter: brightness(0.95); }
 .btn.tonal.busy .ic { animation: spin 1.2s linear infinite; }
-.btn.danger { background: var(--danger-container); color: var(--danger); font-weight: 700; }
-.btn.danger:active { filter: brightness(0.95); }
+.btn.danger { background: transparent; color: var(--danger-muted); border: 1px solid var(--danger-muted-line); }
+.btn.danger:active { background: var(--danger-container); }
 .top-bar .btn.danger { min-height: 40px; margin-right: 4px; gap: 6px; }
 .btn.text { background: transparent; color: var(--primary); padding: 0 16px; }
 .btn.text:active { background: var(--primary-container); }
