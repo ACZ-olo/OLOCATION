@@ -137,6 +137,15 @@ export async function deleteLocationChange(token, storeId, changeId) {
   return { store: toStore(data.store) };
 }
 
+// Borrar tiendas (solo admin; supabase/migrations/20261027150000_delete_stores.sql).
+export async function deleteStore(token, storeId) {
+  await rpc("delete_store", { p_token: token, p_store_id: storeId });
+}
+
+export async function deleteInvoiceStore(token, storeId) {
+  await rpc("delete_invoice_store", { p_token: token, p_store_id: storeId });
+}
+
 // Registro nuevo (supabase/migrations/20261026090000_invoice_stores.sql).
 
 export async function listInvoiceStores(token) {

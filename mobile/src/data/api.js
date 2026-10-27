@@ -92,3 +92,9 @@ export const registerInvoiceStore = invoiceModuleMissing;
 export const listInvoiceLocationChanges = invoiceModuleMissing;
 export const registerInvoiceLocation = invoiceModuleMissing;
 export const deleteInvoiceLocationChange = invoiceModuleMissing;
+export const deleteInvoiceStore = invoiceModuleMissing;
+
+// Borrar tiendas tampoco existe en el backend FastAPI.
+export async function deleteStore() {
+  throw new DataError("NOT_CONFIGURED", "Borrar tiendas solo está disponible con Supabase.");
+}

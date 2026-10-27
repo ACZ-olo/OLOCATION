@@ -1,7 +1,9 @@
 // Estado compartido entre pantallas (en memoria).
 import {
   deleteInvoiceLocationChange,
+  deleteInvoiceStore,
   deleteLocationChange,
+  deleteStore,
   listInvoiceLocationChanges,
   listInvoiceStores,
   listLocationChanges,
@@ -28,6 +30,7 @@ export const MODULES = {
     listChanges: listLocationChanges,
     registerLocation,
     deleteChange: deleteLocationChange,
+    deleteStore,
   },
   invoice: {
     key: "invoice",
@@ -36,6 +39,7 @@ export const MODULES = {
     listChanges: listInvoiceLocationChanges,
     registerLocation: registerInvoiceLocation,
     deleteChange: deleteInvoiceLocationChange,
+    deleteStore: deleteInvoiceStore,
   },
 };
 
@@ -82,6 +86,14 @@ export function updateStore(store, module = "stores") {
   state[SLOT[module]] = items.some((s) => s.id === store.id)
     ? items.map((s) => (s.id === store.id ? store : s))
     : [...items, store].sort(byName);
+  state.version++;
+}
+
+/** Saca una tienda borrada del listado. */
+export function removeStore(id, module = "stores") {
+  const items = storesOf(module);
+  if (!items) return;
+  state[SLOT[module]] = items.filter((s) => s.id !== Number(id));
   state.version++;
 }
 

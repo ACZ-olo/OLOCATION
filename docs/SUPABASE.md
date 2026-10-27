@@ -46,6 +46,8 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   fallidos usa la IP que agrega Supabase (antes se podía falsificar con `X-Forwarded-For`) y tiene
   un tope global (50 en 15 min); `revoke_access` cierra la sesión en el servidor al tocar "Salir";
   cambiar una contraseña cierra todas las sesiones de ese rol.
+- `supabase/migrations/20261027150000_delete_stores.sql`: `delete_store` y `delete_invoice_store`
+  (solo admin) borran una tienda del registro viejo o nuevo junto con su historial.
   Aplicar las migraciones **en orden** (por nombre de archivo).
 - **Cambiar una contraseña** (SQL Editor). Cierra todas las sesiones de ese rol:
   `update private.app_settings set value = extensions.crypt('<nueva>', extensions.gen_salt('bf')) where key = 'admin_password_hash';`

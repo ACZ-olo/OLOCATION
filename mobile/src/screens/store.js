@@ -6,8 +6,8 @@ import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
 import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
-import { go } from "../router.js";
-import { MODULES, findStore, loadStores, updateStore } from "../state.js";
+import { back, go } from "../router.js";
+import { MODULES, findStore, loadStores, removeStore, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
 
 let map;
@@ -155,6 +155,44 @@ $("history").addEventListener("click", async (e) => {
     btn.disabled = false;
   } finally {
     deleting = false;
+  }
+});
+
+// Borrar la tienda entera (solo admin): se va con todo su historial.
+$("deleteStore").addEventListener("click", async () => {
+  const store = findStore(storeId, module);
+  if (!store || deleting) return;
+  const count = store.changeCount;
+  const ok = await confirmDialog({
+    title: "¿Borrar esta tienda?",
+    body:
+      `<p><strong>${escapeHtml(store.name)}</strong> · ${escapeHtml(store.code)}</p>` +
+      `<p class="muted">Se borra del ${module === "invoice" ? "registro nuevo" : "registro viejo"}` +
+      `${count ? ` junto con su historial (${count} ${count === 1 ? "cambio" : "cambios"} de ubicación)` : ""}. ` +
+      `No se puede deshacer.</p>`,
+    accept: "Borrar",
+  });
+  if (!ok || findStore(store.id, module) !== store) return;
+
+  deleting = true;
+  const btn = $("deleteStore");
+  btn.disabled = true;
+  const mod = module;
+  try {
+    await MODULES[mod].deleteStore(getToken(), store.id);
+    removeStore(store.id, mod);
+    toast("Tienda borrada.", "ok");
+    if (storeId === store.id && module === mod) back();
+  } catch (e) {
+    handleDataError(e);
+    if (e.code === "STORE_NOT_FOUND") {
+      // Ya la había borrado alguien más: se saca del listado igual.
+      removeStore(store.id, mod);
+      if (storeId === store.id && module === mod) back();
+    }
+  } finally {
+    deleting = false;
+    btn.disabled = false;
   }
 });
 
