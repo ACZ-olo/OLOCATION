@@ -38,8 +38,9 @@
   --tab-on: #ffffff;           /* pestaña activa (Registro viejo / nuevo) */
   --danger: #c62828;
   --danger-container: #fde8e8;
-  --danger-muted: #a3554f;        /* rojo apagado: acciones peligrosas que no deben resaltar */
-  --danger-muted-line: #e3c4c1;
+  --danger-muted: #b23b33;        /* rojo sobrio: acciones peligrosas que no deben resaltar */
+  --danger-muted-line: #d99d97;
+  --danger-muted-bg: #fbefee;
   --warn: #9a5b00;
   --warn-container: #fff1d6;
   --pending: #735a00;          /* ≥ 4.5:1 sobre --pending-container */
@@ -73,8 +74,9 @@
   --tab-on: #353c41;
   --danger: #ff8a80;
   --danger-container: #3d1c1c;
-  --danger-muted: #c99590;
-  --danger-muted-line: #4a3533;
+  --danger-muted: #e8968e;
+  --danger-muted-line: #6e3c38;
+  --danger-muted-bg: #2b1c1b;
   --warn: #ffc56b;
   --warn-container: #3a2c12;
   --pending: #f0cf6a;
@@ -242,7 +244,12 @@ button, input { font-family: inherit; }
 .btn.tonal { background: var(--primary-container); color: var(--on-primary-container); }
 .btn.tonal:active { filter: brightness(0.95); }
 .btn.tonal.busy .ic { animation: spin 1.2s linear infinite; }
-.btn.danger { background: transparent; color: var(--danger-muted); border: 1px solid var(--danger-muted-line); }
+.btn.danger {
+  background: var(--danger-muted-bg);
+  color: var(--danger-muted);
+  border: 1px solid var(--danger-muted-line);
+  font-weight: 700;
+}
 .btn.danger:active { background: var(--danger-container); }
 .top-bar .btn.danger { min-height: 40px; margin-right: 4px; gap: 6px; }
 .btn.text { background: transparent; color: var(--primary); padding: 0 16px; }
