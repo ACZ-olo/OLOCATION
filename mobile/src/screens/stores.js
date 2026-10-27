@@ -5,7 +5,8 @@
 // Escanear una factura SIEMPRE registra su cliente en el registro nuevo si el código todavía no
 // está. Admin: desde el registro viejo además se muestran las tiendas que coinciden; desde el
 // nuevo se abre directamente el registro. Transportista: se muestra la tienda escaneada para
-// tocarla (ficha → guardar ubicación). El admin tiene pestañas, buscador y filtros; el
+// tocarla (ficha → guardar ubicación). El admin tiene pestañas, buscador y filtros (estos solo
+// en el registro nuevo); el
 // transportista solo el botón de escanear y la lista (ver body[data-role] en styles.css).
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
@@ -381,11 +382,12 @@ function listScreen(key) {
         renderedKey = "";
       }
       const admin = isAdmin();
-      if (!admin && (filter !== "all" || $("storeSearch").value)) {
-        // El transportista no tiene buscador ni filtros: no puede quedar uno puesto del admin.
-        $("storeSearch").value = "";
-        document.querySelector('.filter[data-filter="all"]').click();
-      }
+      // El transportista no tiene buscador ni filtros: no puede quedar uno puesto del admin.
+      if (!admin) $("storeSearch").value = "";
+      // En el registro viejo no hay filtros: siempre se muestran todas.
+      const filters = admin && module !== "stores";
+      $("storeFilters").hidden = !filters;
+      if (!filters && filter !== "all") document.querySelector('.filter[data-filter="all"]').click();
       $("scanInvoice").querySelector("span").textContent =
         admin && module === "invoice" ? "Escanear factura y registrar" : "Escanear factura";
       renderTabs();
