@@ -48,27 +48,27 @@
   color-scheme: light;
 }
 
-/* Oscuro: grises pizarra (no negro), para que no se vea tan cerrado. */
+/* Oscuro: grafito casi negro, con tarjetas apenas más claras que el fondo. */
 :root[data-theme="dark"] {
-  --bg: #1d2225;
-  --surface: #272d31;
-  --surface-2: #323a3f;
-  --outline: #48525a;
-  --field-line: #7d8990;
+  --bg: #121517;
+  --surface: #1b1f22;
+  --surface-2: #252a2e;
+  --outline: #363d42;
+  --field-line: #6b767c;
   --text: #eef2f3;
   --muted: #a9b4ba;
   --primary: #4ab397;
   --on-primary: #08201a;
-  --primary-container: #1d4a3f;
+  --primary-container: #173d33;
   --on-primary-container: #b3eedd;
-  --bar: #2b3236;
+  --bar: #1b1f22;
   --on-bar: #ffffff;
-  --bar-line: #363e43;
-  --hero: #2b3236;
+  --bar-line: #2a3034;
+  --hero: #1b1f22;
   --on-hero: #ffffff;
   --on-hero-muted: #c9d1d5;
-  --scrollbar: #4f5a61;
-  --tab-on: #48535b;
+  --scrollbar: #3f474d;
+  --tab-on: #353c41;
   --danger: #ff8a80;
   --danger-container: #3d1c1c;
   --warn: #ffc56b;

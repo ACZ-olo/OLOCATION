@@ -4,7 +4,7 @@ import { Style, StatusBar } from "@capacitor/status-bar";
 import { safeStorage } from "./storage.js";
 
 const KEY = "olocation.theme";
-const BAR_COLORS = { light: "#ffffff", dark: "#2b3236" }; // = --bar de styles.css
+const BAR_COLORS = { light: "#ffffff", dark: "#1b1f22" }; // = --bar de styles.css
 const media = window.matchMedia("(prefers-color-scheme: dark)");
 
 const saved = () => {
