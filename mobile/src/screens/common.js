@@ -1,4 +1,5 @@
-import { clearAccess } from "../lib/access.js";
+import { revokeAccess } from "../data/index.js";
+import { clearAccess, getToken } from "../lib/access.js";
 import { toast } from "../lib/ui.js";
 import { go } from "../router.js";
 import { resetState } from "../state.js";
@@ -12,8 +13,14 @@ export const takeAccessMessage = () => {
   return msg;
 };
 
-/** Sale de la app (borra el acceso guardado) y vuelve a la pantalla de contraseña. */
+/**
+ * Sale de la app: cierra la sesión en el servidor, borra el acceso guardado y vuelve a la
+ * pantalla de contraseña. Sin conexión, el token igual se borra del teléfono (la sesión del
+ * servidor vence sola o se cierra al cambiar la contraseña).
+ */
 export function lockApp(message = "") {
+  const token = getToken();
+  if (token) revokeAccess(token).catch(() => {});
   clearAccess();
   resetState();
   pendingAccessMessage = message;

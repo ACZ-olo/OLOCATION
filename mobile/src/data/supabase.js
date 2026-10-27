@@ -52,7 +52,9 @@ async function rpc(name, params) {
   if (!error.code && /fetch/i.test(error.message)) {
     throw new DataError("NETWORK", "No hay conexión con el servidor. Revisá tu internet.");
   }
-  throw new DataError("UNKNOWN", error.message || "Error de Supabase.");
+  // Un error no previsto puede traer detalles internos de la base: no se le muestran al usuario.
+  console.error(`Supabase ${name}:`, error);
+  throw new DataError("UNKNOWN", "Ocurrió un error en el servidor. Intentá de nuevo en unos minutos.");
 }
 
 const toStore = (row) => ({
@@ -89,6 +91,11 @@ export async function verifyAccess(password) {
     throw new DataError(code, data.message || "No se pudo verificar la contraseña.");
   }
   return { token: data.token, expiresAt: data.expires_at, role: data.role };
+}
+
+/** Cierra la sesión en el servidor (el token deja de servir). */
+export async function revokeAccess(token) {
+  await rpc("revoke_access", { p_token: token });
 }
 
 export async function listStores(token) {

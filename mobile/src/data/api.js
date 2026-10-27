@@ -54,6 +54,9 @@ export async function verifyAccess(password) {
   return { ...(await request("/access", { method: "POST", body: { password } })), role: "admin" };
 }
 
+// El backend FastAPI no tiene cierre de sesión en el servidor: salir solo borra el token local.
+export async function revokeAccess() {}
+
 export async function listStores(token) {
   return (await request("/stores", { token })).items;
 }

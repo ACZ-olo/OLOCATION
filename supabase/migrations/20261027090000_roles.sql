@@ -10,11 +10,14 @@
 alter table private.access_sessions
   add column role text not null default 'empleado' check (role in ('admin', 'empleado'));
 
--- Contraseña inicial de admin: cambiarla con
+-- Contraseña de admin: se crea una aleatoria que nadie conoce (el repositorio es público: no
+-- poner contraseñas acá). Definirla desde el SQL Editor de Supabase con
 --   update private.app_settings set value = extensions.crypt('<nueva>', extensions.gen_salt('bf'))
 --   where key = 'admin_password_hash';
+-- (La base en producción ya tenía aplicada una versión anterior de este archivo.)
 insert into private.app_settings (key, value)
-values ('admin_password_hash', extensions.crypt('admin123', extensions.gen_salt('bf')))
+values ('admin_password_hash',
+        extensions.crypt(encode(extensions.gen_random_bytes(24), 'hex'), extensions.gen_salt('bf')))
 on conflict (key) do nothing;
 
 -- ---------------------------------------------------------------------------

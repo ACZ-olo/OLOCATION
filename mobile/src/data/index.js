@@ -3,6 +3,7 @@
  * con VITE_DATA_PROVIDER ("api" o "supabase") y ambos implementan la misma interfaz:
  *
  *   verifyAccess(password)              → { token, expiresAt, role: "admin"|"empleado" }
+ *   revokeAccess(token)                 → cierra la sesión en el servidor
  *   listStores(token)                   → Store[]
  *   listLocationChanges(token, storeId) → LocationChange[]   (más reciente primero)
  *   registerLocation(token, storeId, { latitude, longitude, source, accuracyM })
@@ -48,6 +49,7 @@ function provider() {
 }
 
 export const verifyAccess = async (password) => (await provider()).verifyAccess(password);
+export const revokeAccess = async (token) => (await provider()).revokeAccess(token);
 export const listStores = async (token) => (await provider()).listStores(token);
 export const listLocationChanges = async (token, storeId) =>
   (await provider()).listLocationChanges(token, storeId);

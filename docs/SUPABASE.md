@@ -12,8 +12,9 @@ interfaz:
 Se elige con `VITE_DATA_PROVIDER` en `mobile/.env` (junto con `VITE_SUPABASE_URL` y
 `VITE_SUPABASE_ANON_KEY`). Después de cambiarlo hay que volver a compilar la app y el APK.
 
-**Estado del proyecto:** migraciones aplicadas (las de `supabase/migrations/`), contraseña de
-acceso `olo2026`, y los datos migrados desde el backend local con un respaldo (15 tiendas de
+**Estado del proyecto:** migraciones aplicadas (las de `supabase/migrations/`), contraseñas de
+admin y de empleados definidas en la base (**nunca escribirlas en este repositorio: es público**),
+y los datos migrados desde el backend local con un respaldo (15 tiendas de
 prueba y su historial). Probado de punta a punta desde el navegador y desde el APK.
 
 ## Qué hay preparado
@@ -37,12 +38,18 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   lo deja como está), `list_invoice_store_location_changes`, `register_invoice_store_location`,
   `delete_invoice_store_location_change`. El respaldo agrega `invoiceStores` (un respaldo sin esa
   clave no toca este módulo).
-- `supabase/migrations/20261027090000_roles.sql`: dos contraseñas. **admin** (`admin_password_hash`,
-  inicial `admin123`) ve registro viejo, registro nuevo y respaldo; **empleado**
-  (`access_password_hash`, la de siempre) solo usa el registro nuevo y no borra historial.
-  `verify_access` devuelve `role`; las funciones de admin lanzan `FORBIDDEN` con un empleado. En
-  el registro viejo ya no se registran ubicaciones. Las sesiones previas quedan como empleado.
+- `supabase/migrations/20261027090000_roles.sql`: dos contraseñas. **admin** (`admin_password_hash`)
+  ve registro viejo, registro nuevo y respaldo; **empleado** (`access_password_hash`) solo usa el
+  registro nuevo y no borra historial. `verify_access` devuelve `role`; las funciones de admin
+  lanzan `FORBIDDEN` con un empleado. En el registro viejo ya no se registran ubicaciones.
+- `supabase/migrations/20261027120000_security.sql`: auditoría de seguridad. El límite de intentos
+  fallidos usa la IP que agrega Supabase (antes se podía falsificar con `X-Forwarded-For`) y tiene
+  un tope global (50 en 15 min); `revoke_access` cierra la sesión en el servidor al tocar "Salir";
+  cambiar una contraseña cierra todas las sesiones de ese rol.
   Aplicar las migraciones **en orden** (por nombre de archivo).
+- **Cambiar una contraseña** (SQL Editor). Cierra todas las sesiones de ese rol:
+  `update private.app_settings set value = extensions.crypt('<nueva>', extensions.gen_salt('bf')) where key = 'admin_password_hash';`
+  (o `'access_password_hash'` para la de empleados). Usar contraseñas largas (12+ caracteres).
 - Para aplicar una migración nueva desde el PC (psql): connection string del botón **Connect →
   Session pooler** del proyecto, `psql "<connection string>" -1 -v ON_ERROR_STOP=1 -f archivo.sql`.
   Se probó en PostgreSQL 17 con los roles `anon`/`authenticated` simulados: acceso
