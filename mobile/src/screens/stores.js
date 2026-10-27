@@ -6,8 +6,8 @@
 // está. Admin: desde el registro viejo además se muestran las tiendas que coinciden; desde el
 // nuevo se abre directamente el registro. Transportista: se muestra la tienda escaneada para
 // tocarla (ficha → guardar ubicación). El admin tiene pestañas, buscador y filtros (estos solo
-// en el registro nuevo); el
-// transportista solo el botón de escanear y la lista (ver body[data-role] en styles.css).
+// en el registro nuevo); el transportista, en el inicio, solo el botón de escanear, y tras
+// escanear solo el resultado (ver body[data-role] en styles.css).
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
@@ -91,6 +91,7 @@ function renderTabs() {
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function render({ force = false } = {}) {
+  $("storesBody").classList.toggle("home", !scan); // transportista: inicio solo con el botón
   const all = storesOf(module);
   if (!all) return;
   const key = `${state.version}|${module}|${filter}|${$("storeSearch").value}|${scan?.seq ?? ""}`;
@@ -184,6 +185,11 @@ function storesScanInfo(items, code) {
 function closeScan() {
   scan = null;
   render();
+}
+
+/** Olvida el último escaneo (al guardar la ubicación, el transportista vuelve al inicio). */
+export function clearScan() {
+  scan = null;
 }
 
 /** Qué faltó leer para poder registrar en el registro nuevo ("el código", "el nombre"…), o "". */
@@ -388,6 +394,7 @@ function listScreen(key) {
       const filters = admin && module !== "stores";
       $("storeFilters").hidden = !filters;
       if (!filters && filter !== "all") document.querySelector('.filter[data-filter="all"]').click();
+      $("scanClose").textContent = admin ? "Ver todas las tiendas" : "Volver al inicio";
       $("scanInvoice").querySelector("span").textContent =
         admin && module === "invoice" ? "Escanear factura y registrar" : "Escanear factura";
       renderTabs();

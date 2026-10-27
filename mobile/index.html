@@ -98,7 +98,7 @@
     <header class="top-bar">
       <svg class="bar-logo" role="img" aria-label="OLO"><use href="#logo-olo"/></svg>
       <h1 class="bar-title">Tiendas</h1>
-      <button id="refreshStores" class="icon-btn" type="button" aria-label="Actualizar listado" title="Actualizar listado">
+      <button id="refreshStores" class="icon-btn admin-only" type="button" aria-label="Actualizar listado" title="Actualizar listado">
         <svg class="ic"><use href="#i-refresh"/></svg>
       </button>
       <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
@@ -111,8 +111,13 @@
     </header>
     <div id="storesBody" class="screen-body scroll">
       <!-- Controles dentro del área que se desplaza: la lista usa toda la pantalla.
-           admin-only: el transportista solo ve el botón de escanear y la lista. -->
+           admin-only: el transportista solo ve el botón de escanear (con scan-hero) y, tras
+           escanear, la tienda de la factura. -->
       <div class="list-controls">
+        <div class="scan-hero">
+          <span class="scan-hero-icon"><svg class="ic"><use href="#i-scan"/></svg></span>
+          <p>Escaneá la factura de la tienda donde estás para guardar su ubicación.</p>
+        </div>
         <div class="module-tabs admin-only" role="group" aria-label="Registro">
           <button class="module-tab on" type="button" aria-pressed="true" data-module="stores">Registro viejo</button>
           <button class="module-tab" type="button" aria-pressed="false" data-module="invoice">Registro nuevo</button>

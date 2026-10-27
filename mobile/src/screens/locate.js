@@ -11,6 +11,7 @@ import { $, confirmDialog, icon, toast } from "../lib/ui.js";
 import { back, go } from "../router.js";
 import { MODULES, findStore, loadStores, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
+import { clearScan } from "./stores.js";
 
 const GPS_ZOOM = 18;
 
@@ -155,10 +156,15 @@ $("saveLocation").addEventListener("click", async () => {
   try {
     const result = await MODULES[module].registerLocation(getToken(), store.id, p);
     updateStore(result.store, module);
-    toast(`Ubicación guardada · cambio n.º ${result.store.changeCount}`, "ok");
-    // El transportista termina acá: vuelve al inicio, listo para la próxima factura.
-    if (isAdmin()) back();
-    else go(MODULES[module].base, { replace: true });
+    // El transportista termina acá: vuelve al inicio (sin el escaneo), listo para la próxima factura.
+    if (isAdmin()) {
+      toast(`Ubicación guardada · cambio n.º ${result.store.changeCount}`, "ok");
+      back();
+    } else {
+      toast(`¡Listo! Ubicación de ${result.store.name} guardada.`, "ok");
+      clearScan();
+      go(MODULES[module].base, { replace: true });
+    }
   } catch (e) {
     handleDataError(e);
     btn.disabled = false;

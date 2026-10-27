@@ -380,10 +380,41 @@ button, input { font-family: inherit; }
 .list-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
 
 /* ---- Vista del transportista (body[data-role="empleado"], ver main.js) ----
-   Sin pestañas, buscador, filtros ni Respaldo: solo el botón de escanear (grande) y la lista. */
+   Sin pestañas, buscador, filtros ni Respaldo. Inicio (#storesBody.home): solo el botón de
+   escanear, centrado. Tras escanear: solo el resultado (con "Escanear de nuevo"). */
 body[data-role="empleado"] .admin-only { display: none !important; }
-body[data-role="empleado"] .list-controls { margin: 4px auto 24px; }
-body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
+.scan-hero { display: none; }
+body[data-role="empleado"] #storesBody.home { display: flex; flex-direction: column; }
+body[data-role="empleado"] #storesBody.home > :not(.list-controls) { display: none; }
+body[data-role="empleado"] #storesBody.home .list-controls { width: 100%; margin: auto; gap: 24px; }
+body[data-role="empleado"] #storesBody:not(.home) .list-controls { display: none; }
+body[data-role="empleado"] .scan-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+.scan-hero-icon {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  border-radius: 32px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.scan-hero-icon .ic { width: 52px; height: 52px; }
+.scan-hero p { margin: 0; max-width: 340px; color: var(--muted); font-size: 1.05rem; line-height: 1.5; }
+body[data-role="empleado"] .scan-btn {
+  min-height: 76px;
+  border-radius: 999px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: 1.15rem;
+  font-weight: 700;
+  box-shadow: none;
+}
 
 /* ---- Pestañas de módulo (Registro viejo / Registro nuevo, solo admin) ---- */
 .module-tabs {
