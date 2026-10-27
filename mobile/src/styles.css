@@ -27,8 +27,12 @@
   --on-primary: #ffffff;
   --primary-container: #d5f1e9;
   --on-primary-container: #00513f;
-  --bar: #251e1f;
-  --on-bar: #ffffff;
+  --bar: #ffffff;              /* barra superior: blanca, con línea divisoria */
+  --on-bar: #251e1f;
+  --bar-line: #e1e6e9;
+  --hero: #251e1f;             /* fondo de la pantalla de acceso (carbón OLO) */
+  --scrollbar: #c3cbd0;
+  --tab-on: #ffffff;           /* pestaña activa (Registro viejo / nuevo) */
   --danger: #c62828;
   --danger-container: #fde8e8;
   --warn: #9a5b00;
@@ -41,27 +45,32 @@
   color-scheme: light;
 }
 
+/* Oscuro: grises pizarra (no negro), para que no se vea tan cerrado. */
 :root[data-theme="dark"] {
-  --bg: #141011;
-  --surface: #211b1c;
-  --surface-2: #2c2526;
-  --outline: #3f3637;
-  --text: #f2eeee;
-  --muted: #b5abac;
+  --bg: #1d2225;
+  --surface: #272d31;
+  --surface-2: #323a3f;
+  --outline: #48525a;
+  --text: #eef2f3;
+  --muted: #a9b4ba;
   --primary: #4ab397;
   --on-primary: #08201a;
-  --primary-container: #12392f;
-  --on-primary-container: #a9ead8;
-  --bar: #0e0b0b;
+  --primary-container: #1d4a3f;
+  --on-primary-container: #b3eedd;
+  --bar: #2b3236;
   --on-bar: #ffffff;
+  --bar-line: #363e43;
+  --hero: #2b3236;
+  --scrollbar: #4f5a61;
+  --tab-on: #48535b;
   --danger: #ff8a80;
   --danger-container: #3d1c1c;
   --warn: #ffc56b;
   --warn-container: #3a2c12;
   --pending: #f0cf6a;
   --pending-container: #352d12;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-up: 0 -2px 12px rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-up: 0 -2px 12px rgba(0, 0, 0, 0.3);
   --scrim: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
@@ -116,20 +125,38 @@ button, input { font-family: inherit; }
 .screen-body.scroll {
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 16px 24px;
+  padding: 16px 16px 32px;
 }
 .screen-body.scroll > * { max-width: 640px; margin-left: auto; margin-right: auto; }
 
-/* ---- Barra superior (carbón OLO) ---- */
+/* Barra de desplazamiento fina y redondeada (en el teléfono no se ve; en la PC sí). Chrome/Edge
+   ignoran ::-webkit-scrollbar si hay scrollbar-width, así que ese va solo para Firefox. */
+@supports not selector(::-webkit-scrollbar) {
+  .scroll { scrollbar-width: thin; scrollbar-color: var(--scrollbar) transparent; }
+}
+.scroll::-webkit-scrollbar { width: 10px; }
+.scroll::-webkit-scrollbar-track { background: transparent; }
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.scroll::-webkit-scrollbar-button { display: none; }
+
+/* ---- Barra superior (blanca en claro, pizarra en oscuro) ---- */
 .top-bar {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: calc(64px + var(--safe-top));
+  min-height: calc(60px + var(--safe-top));
   padding: var(--safe-top) 4px 0 16px;
   background: var(--bar);
   color: var(--on-bar);
+  border-bottom: 1px solid var(--bar-line);
 }
 .top-bar .icon-btn:first-child { margin-left: -12px; }
 .bar-logo { width: 44px; height: 20px; color: var(--on-bar); flex: 0 0 auto; margin-right: 8px; }
@@ -146,7 +173,7 @@ button, input { font-family: inherit; }
 .bar-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-left: 4px; }
 .bar-overline {
   font-size: 0.75rem;
-  color: var(--brand-light);
+  color: var(--primary);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -284,16 +311,16 @@ button, input { font-family: inherit; }
 .switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* ---- Pantalla de acceso ---- */
-.screen-access { background: var(--bar); overflow-y: auto; }
+.screen-access { background: var(--hero); overflow-y: auto; }
 .access-hero {
   position: relative;
   flex: 0 0 auto;
   padding: calc(48px + var(--safe-top)) 24px 40px;
   text-align: center;
-  color: var(--on-bar);
+  color: #ffffff;
 }
 .hero-action { position: absolute; top: calc(8px + var(--safe-top)); right: 8px; }
-.access-logo { width: 132px; height: 61px; color: var(--on-bar); }
+.access-logo { width: 132px; height: 61px; color: #ffffff; }
 .access-app {
   margin: 16px 0 4px;
   font-family: var(--font-head);
@@ -327,52 +354,50 @@ button, input { font-family: inherit; }
 }
 .form-msg.ok { color: var(--primary); font-weight: 500; }
 
-/* ---- Buscador y filtros ---- */
-.search-bar {
-  flex: 0 0 auto;
-  padding: 12px 16px 4px;
-  background: var(--bg);
-}
-.search-bar > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+/* ---- Controles del listado (pestañas, buscador, escanear, filtros) ----
+   Van dentro del área que se desplaza, separados entre sí y de la lista. */
+.list-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
 
 /* ---- Vista del transportista (body[data-role="empleado"], ver main.js) ----
    Sin pestañas, buscador, filtros ni Respaldo: solo el botón de escanear (grande) y la lista. */
 body[data-role="empleado"] .admin-only { display: none !important; }
-body[data-role="empleado"] .scan-btn { min-height: 64px; margin-top: 4px; font-size: 1.1rem; }
+body[data-role="empleado"] .list-controls { margin: 4px auto 24px; }
+body[data-role="empleado"] .scan-btn { min-height: 64px; font-size: 1.1rem; }
 
 /* ---- Pestañas de módulo (Registro viejo / Registro nuevo, solo admin) ---- */
 .module-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 12px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--surface-2);
 }
 .module-tab {
   flex: 1;
-  min-height: 40px;
+  min-height: 42px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
-.module-tab.on { background: var(--primary-container); color: var(--on-primary-container); }
+.module-tab.on { background: var(--tab-on); color: var(--text); font-weight: 700; box-shadow: var(--shadow); }
 .search {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 52px;
-  padding: 0 4px 0 16px;
-  background: var(--surface-2);
-  border-radius: 999px;
+  gap: 10px;
+  height: 50px;
+  padding: 0 4px 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
   color: var(--muted);
 }
-.search:focus-within { box-shadow: 0 0 0 2px var(--primary); }
+.search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .search input {
   flex: 1;
   min-width: 0;
@@ -386,34 +411,41 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; margin-top: 4px; font-s
 }
 .search input::-webkit-search-cancel-button { display: none; }
 
-.filters {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.filters::-webkit-scrollbar { display: none; }
+/* Filtros: tres tarjetas iguales con el número arriba (entran siempre, sin cortarse). */
+.filters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .filter {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1.5px solid var(--outline);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.9rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8rem;
   font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.filter span { color: var(--muted); font-weight: 400; margin-left: 2px; }
-.filter.on { background: var(--primary-container); border-color: transparent; color: var(--on-primary-container); }
-.filter.on span { color: inherit; }
+.filter-count {
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.filter.on { background: var(--primary-container); border-color: var(--primary); color: var(--on-primary-container); }
+.filter.on .filter-count { color: inherit; }
 
 /* ---- Escanear factura ---- */
-.scan-btn { display: flex; min-height: 48px; margin-top: 10px; }
+.scan-btn { display: flex; min-height: 52px; border-radius: 14px; font-size: 1.02rem; box-shadow: var(--shadow); }
 .scan-btn.busy .ic { animation: spin 1.2s linear infinite; }
-.scan-panel { border: 1.5px solid var(--primary); }
+.scan-panel { border: 1.5px solid var(--primary); margin-bottom: 20px; }
 .scan-head { display: flex; align-items: center; gap: 14px; }
 .scan-head-txt { min-width: 0; }
 .scan-head h2 { margin: 0 0 2px; font-size: 1.05rem; font-weight: 700; }
@@ -475,7 +507,7 @@ body[data-role="empleado"] .scan-btn { min-height: 64px; margin-top: 4px; font-s
 
 /* ---- Lista de tiendas ---- */
 .list { list-style: none; margin: 0; padding: 0; }
-.list li { margin-bottom: 8px; }
+.list li { margin-bottom: 10px; }
 .store-item {
   width: 100%;
   display: flex;

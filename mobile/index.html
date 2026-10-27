@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#251e1f" />
+  <meta name="theme-color" content="#ffffff" />
   <title>OLOCATION — OLO Soluciones Logísticas</title>
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
   <script>
@@ -109,30 +109,31 @@
         <svg class="ic"><use href="#i-lock"/></svg>
       </button>
     </header>
-    <div class="search-bar">
-      <!-- admin-only: el transportista solo ve el botón de escanear y la lista -->
-      <div class="module-tabs admin-only" role="tablist" aria-label="Módulo">
-        <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Registro viejo</button>
-        <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Registro nuevo</button>
-      </div>
-      <div class="search admin-only">
-        <svg class="ic"><use href="#i-search"/></svg>
-        <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
-               enterkeyhint="search" aria-label="Buscar tienda" />
-        <button id="clearSearch" class="icon-btn small" type="button" aria-label="Borrar búsqueda" hidden>
-          <svg class="ic"><use href="#i-close"/></svg>
-        </button>
-      </div>
-      <button id="scanInvoice" class="btn tonal block scan-btn" type="button">
-        <svg class="ic sm"><use href="#i-scan"/></svg> <span>Escanear factura</span>
-      </button>
-      <div class="filters admin-only" role="radiogroup" aria-label="Filtrar tiendas">
-        <button class="filter on" type="button" role="radio" aria-checked="true" data-filter="all">Todas <span id="countAll"></span></button>
-        <button class="filter" type="button" role="radio" aria-checked="false" data-filter="pending">Sin registrar <span id="countPending"></span></button>
-        <button class="filter" type="button" role="radio" aria-checked="false" data-filter="done">Registradas <span id="countDone"></span></button>
-      </div>
-    </div>
     <div id="storesBody" class="screen-body scroll">
+      <!-- Controles dentro del área que se desplaza: la lista usa toda la pantalla.
+           admin-only: el transportista solo ve el botón de escanear y la lista. -->
+      <div class="list-controls">
+        <div class="module-tabs admin-only" role="tablist" aria-label="Módulo">
+          <button class="module-tab on" type="button" role="tab" aria-selected="true" data-module="stores">Registro viejo</button>
+          <button class="module-tab" type="button" role="tab" aria-selected="false" data-module="invoice">Registro nuevo</button>
+        </div>
+        <div class="search admin-only">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input id="storeSearch" type="search" placeholder="Buscar por nombre, código o zona" autocomplete="off"
+                 enterkeyhint="search" aria-label="Buscar tienda" />
+          <button id="clearSearch" class="icon-btn small" type="button" aria-label="Borrar búsqueda" hidden>
+            <svg class="ic"><use href="#i-close"/></svg>
+          </button>
+        </div>
+        <button id="scanInvoice" class="btn filled block scan-btn" type="button">
+          <svg class="ic"><use href="#i-scan"/></svg> <span>Escanear factura</span>
+        </button>
+        <div class="filters admin-only" role="radiogroup" aria-label="Filtrar tiendas">
+          <button class="filter on" type="button" role="radio" aria-checked="true" data-filter="all"><span id="countAll" class="filter-count"></span>Todas</button>
+          <button class="filter" type="button" role="radio" aria-checked="false" data-filter="pending"><span id="countPending" class="filter-count"></span>Sin registrar</button>
+          <button class="filter" type="button" role="radio" aria-checked="false" data-filter="done"><span id="countDone" class="filter-count"></span>Registradas</button>
+        </div>
+      </div>
       <div id="scanPanel" class="card scan-panel" hidden>
         <div class="scan-head">
           <span class="lead"><svg class="ic"><use href="#i-scan"/></svg></span>

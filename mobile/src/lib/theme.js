@@ -4,7 +4,7 @@ import { Style, StatusBar } from "@capacitor/status-bar";
 import { safeStorage } from "./storage.js";
 
 const KEY = "olocation.theme";
-const BAR_COLORS = { light: "#251e1f", dark: "#0e0b0b" }; // = --bar de styles.css
+const BAR_COLORS = { light: "#ffffff", dark: "#2b3236" }; // = --bar de styles.css
 const media = window.matchMedia("(prefers-color-scheme: dark)");
 
 const saved = () => {
@@ -23,8 +23,8 @@ function apply(theme) {
     btn.title = `Tema ${next}`;
   }
   if (Capacitor.isNativePlatform()) {
-    // La barra superior de la app es siempre oscura: íconos claros en la barra de estado.
-    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    // Barra superior blanca en claro (íconos oscuros) y pizarra en oscuro (íconos claros).
+    StatusBar.setStyle({ style: theme === "dark" ? Style.Dark : Style.Light }).catch(() => {});
     StatusBar.setBackgroundColor({ color: BAR_COLORS[theme] }).catch(() => {});
   }
 }
