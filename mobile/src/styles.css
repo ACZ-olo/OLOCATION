@@ -388,6 +388,11 @@ body[data-role="empleado"] #storesBody.home { display: flex; flex-direction: col
 body[data-role="empleado"] #storesBody.home > :not(.list-controls) { display: none; }
 body[data-role="empleado"] #storesBody.home .list-controls { width: 100%; margin: auto; gap: 24px; }
 body[data-role="empleado"] #storesBody:not(.home) .list-controls { display: none; }
+/* Tras escanear: primero la tienda (destacada) y debajo lo leído de la factura. */
+body[data-role="empleado"] #storesBody:not(.home) { display: flex; flex-direction: column; }
+body[data-role="empleado"] #storesBody:not(.home) > * { width: 100%; }
+body[data-role="empleado"] #stores { order: -1; margin-bottom: 10px; }
+body[data-role="empleado"] #storesSummary { display: none; }
 body[data-role="empleado"] .scan-hero {
   display: flex;
   flex-direction: column;
@@ -542,6 +547,47 @@ body[data-role="empleado"] .scan-btn {
   background: var(--primary);
   color: var(--on-primary);
   font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Tienda que salió al escanear (registro nuevo): tarjeta destacada con borde y fondo verdes. */
+.store-item.match {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: var(--shadow);
+}
+.store-item.match:active { filter: brightness(0.96); }
+.match-label {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.match-main { display: flex; align-items: center; gap: 14px; }
+.store-item.match .lead.big { background: var(--primary); color: var(--on-primary); }
+.store-item.match .name { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.store-item.match .sub { font-size: 0.95rem; white-space: normal; }
+.match-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 1.05rem;
   font-weight: 700;
 }
 

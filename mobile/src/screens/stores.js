@@ -79,6 +79,19 @@ function storeItem(s, best = false) {
   );
 }
 
+/** La tienda que salió al escanear en el registro nuevo: tarjeta destacada, bien visible. */
+function matchItem(s, created) {
+  const sub = [s.code, s.address].filter(Boolean).map(escapeHtml).join(" · ");
+  return (
+    `<li><button class="store-item match" type="button" data-id="${s.id}">` +
+    `<span class="match-label">${icon("i-check", "ic sm")}${created ? "Tienda nueva de la factura" : "Tienda de la factura"}</span>` +
+    `<span class="match-main"><span class="lead big">${icon("i-store")}</span>` +
+    `<span class="txt"><span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span></span></span>` +
+    `<span class="match-cta">${icon("i-pin", "ic sm")}Tocá para guardar su ubicación${icon("i-chev", "ic sm")}</span>` +
+    `</button></li>`
+  );
+}
+
 function renderTabs() {
   for (const tab of document.querySelectorAll(".module-tab")) {
     const on = tab.dataset.module === module;
@@ -154,11 +167,14 @@ function renderScan() {
   $("scanInfo").textContent =
     scan.module === "invoice"
       ? scan.created
-        ? "Tienda nueva: quedó registrada con los datos de la factura. Tocala para guardar su ubicación."
-        : "Esta es la tienda de la factura. Tocala para guardar su ubicación."
+        ? "La tienda no estaba: quedó registrada con estos datos."
+        : "Datos leídos de la factura."
       : storesScanInfo(items, code);
   $("storesSummary").textContent = items.length ? plural(items.length, "coincidencia", "coincidencias") : "";
-  $("stores").innerHTML = items.map((s, i) => storeItem(s, i === 0 && items.length > 1)).join("");
+  $("stores").innerHTML =
+    scan.module === "invoice"
+      ? items.map((s) => matchItem(s, scan.created)).join("")
+      : items.map((s, i) => storeItem(s, i === 0 && items.length > 1)).join("");
   $("storesMore").hidden = true;
   setMsg(
     "storesMsg",
