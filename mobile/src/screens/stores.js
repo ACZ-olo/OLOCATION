@@ -11,7 +11,7 @@
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
-import { invoiceProblem, parseInvoice } from "../lib/invoice.js";
+import { invoiceReadOk, parseInvoice } from "../lib/invoice.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
 import { PhotoError } from "../lib/photo.js";
@@ -213,13 +213,12 @@ export function clearScan() {
  * La foto no se leyó bien: no se registra nada y se pide otra. Devuelve true si quiere
  * volver a tomar la foto.
  */
-const askRetake = (problem) =>
+const askRetake = () =>
   confirmDialog({
-    title: "No se logró leer bien la factura",
+    title: "No se logró leer la factura",
     body:
-      `<p><strong>${escapeHtml(problem)}</strong></p>` +
-      `<p class="muted">No se registró nada. Tomá otra foto con buena luz, la factura derecha y ` +
-      `completa, sin sombras ni movimiento, y que el código del cliente se vea nítido.</p>`,
+      `<p>No se pudo leer correctamente. Tomá la foto de nuevo con buena luz, la factura derecha ` +
+      `y sin moverte, y que se vea bien el <strong>código de arriba a la izquierda</strong>.</p>`,
     accept: "Tomar otra foto",
   });
 
@@ -249,10 +248,12 @@ function showScan(fields) {
 /** Escaneo desde el registro viejo (admin): coincidencias como siempre + registro nuevo. */
 async function scanFromStores(invoice) {
   const matches = matchInvoice(invoice, state.stores);
-  const problem = invoiceProblem(invoice);
   let registered;
-  if (problem) {
-    registered = { text: `No se guardó en el registro nuevo. ${problem} Escaneá de nuevo con una foto más clara.`, tone: "warn" };
+  if (!invoiceReadOk(invoice)) {
+    registered = {
+      text: "No se guardó en el registro nuevo: no se pudo leer correctamente. Tomá la foto de nuevo.",
+      tone: "warn",
+    };
   } else {
     const result = await registerFromInvoice(invoice);
     registered = !result
@@ -278,10 +279,9 @@ async function scanFromStores(invoice) {
  * Devuelve true si hay que volver a tomar la foto.
  */
 async function scanFromInvoice(invoice) {
-  const problem = invoiceProblem(invoice);
-  if (problem) {
+  if (!invoiceReadOk(invoice)) {
     if (scan) closeScan(); // que no quede a la vista la tienda del escaneo anterior
-    return askRetake(problem);
+    return askRetake();
   }
   const result = await registerFromInvoice(invoice);
   if (!result) return false;

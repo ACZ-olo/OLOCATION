@@ -35,7 +35,7 @@ function cut(value) {
 }
 
 // El código de cliente tiene siempre 9 números: con otra cantidad, la foto se leyó mal.
-export const CODE_DIGITS = 9;
+const CODE_DIGITS = 9;
 
 /**
  * Número al principio del valor, corrigiendo letras que el OCR confunde con números
@@ -46,16 +46,12 @@ function numberOf(text) {
   return /^\d[\d-]{3,}\d$/.test(fixed) ? fixed.replace(/\D/g, "") : "";
 }
 
-/**
- * Código al principio del valor: { code } si tiene 9 números, si no { seen } con lo que se leyó
- * (para avisar), o {} si no hay número.
- */
+/** Código de 9 números al principio del valor, o "" si no lo hay (o tiene otra cantidad). */
 function codeOf(value) {
   const [a = "", b = ""] = clean(value).split(" ");
   // "0202 10215": el OCR a veces parte el número en dos.
-  const candidates = [/^\d+$/.test(b) ? numberOf(a + b) : "", numberOf(a)].filter(Boolean);
-  const code = candidates.find((c) => c.length === CODE_DIGITS);
-  return code ? { code } : candidates.length ? { seen: candidates[candidates.length - 1] } : {};
+  const candidates = [/^\d+$/.test(b) ? numberOf(a + b) : "", numberOf(a)];
+  return candidates.find((c) => c.length === CODE_DIGITS) || "";
 }
 
 /** Texto de la etiqueta en adelante, dentro del mismo renglón ("NOMBRE: NOVAGRO" → "NOVAGRO"). */
@@ -99,17 +95,14 @@ function fromLayout(lines) {
     return next && isValue(next) ? cut(next.text) : "";
   };
 
-  // CODIGO: también es el título de la columna de productos; vale el que tiene un número al lado.
-  let codeLabel = null;
-  for (const label of labelsOf(LABELS.code)) {
-    const { code, seen } = codeOf(valueOf(label, LABELS.code));
-    if (code) {
-      fields.code = code;
-      codeLabel = label;
-      break;
-    }
-    fields.codeSeen ||= seen;
-  }
+  // El código del cliente es SOLO el de arriba a la izquierda de la factura. "CODIGO" también es
+  // el título de la columna de productos: ese nunca se usa, aunque tenga un número al lado.
+  const left = Math.min(...lines.map((l) => l.box.left));
+  const top = Math.min(...lines.map((l) => l.box.top));
+  const height = Math.max(...lines.map((l) => l.box.bottom)) - top;
+  const codeLabel =
+    labelsOf(LABELS.code).find((l) => l.box.left < left + width * 0.5 && l.box.top < top + height * 0.5) || null;
+  if (codeLabel) fields.code = codeOf(valueOf(codeLabel, LABELS.code));
 
   const nameLabel = labelsOf(LABELS.name)[0];
   if (nameLabel) fields.name = valueOf(nameLabel, LABELS.name);
@@ -144,11 +137,12 @@ function fromLayout(lines) {
 function fromText(text) {
   const fields = {};
   const rows = String(text || "").split(/\r?\n/).map(clean).filter(Boolean);
+  let codeRow = false;
   rows.forEach((row, i) => {
-    if (!fields.code && LABELS.code.test(row)) {
-      const { code, seen } = codeOf(afterLabel(row, LABELS.code) || rows[i + 1]);
-      fields.code = code;
-      fields.codeSeen ||= seen;
+    // Solo el primer CODIGO (el del cliente, arriba); los siguientes son de la tabla de productos.
+    if (!codeRow && LABELS.code.test(row)) {
+      codeRow = true;
+      fields.code = codeOf(afterLabel(row, LABELS.code) || rows[i + 1]);
     }
     const next = rows[i + 1] && !OTHER_LABEL.test(rows[i + 1]) ? cut(rows[i + 1]) : "";
     if (!fields.name && LABELS.name.test(row)) {
@@ -168,19 +162,20 @@ function fromText(text) {
 
 /**
  * Campos de la factura a partir del resultado del OCR ({ text, lines }).
- * Devuelve { code, name, address, notes, place, text, codeSeen, codeConflict } (los que no se
- * encontraron quedan vacíos). Antes de usarlos, revisar invoiceProblem().
+ * Devuelve { code, name, address, notes, place, text } (los que no se encontraron quedan vacíos).
+ * Antes de usarlos, revisar invoiceReadOk().
  */
 export function parseInvoice({ text = "", lines = [] } = {}) {
   const usable = lines.filter((l) => l.box && clean(l.text));
   const layout = usable.length ? fromLayout(usable) : {};
   const plain = fromText(text);
-  // El código se busca por posición y en el texto corrido: si dan distinto, no es confiable.
-  const codeConflict = Boolean(layout.code && plain.code && layout.code !== plain.code);
+  // Con posiciones manda el código de arriba a la izquierda; si el texto corrido da otro, no es
+  // confiable y se descarta.
+  const code = usable.length
+    ? layout.code && (!plain.code || plain.code === layout.code) ? layout.code : ""
+    : plain.code || "";
   const fields = {
-    code: codeConflict ? "" : layout.code || plain.code || "",
-    codeSeen: layout.codeSeen || plain.codeSeen || "",
-    codeConflict,
+    code,
     name: layout.name || plain.name || "",
     address: layout.address || plain.address || "",
     notes: layout.notes || plain.notes || "",
@@ -195,20 +190,11 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
 const letters = (s) => (String(s || "").match(/\p{L}/gu) || []).length;
 
 /**
- * Qué salió mal al leer la factura (para pedir otra foto), o "" si el código y el nombre se
- * leyeron bien. Lo más importante es el código: sin un código de 9 números no se registra nada.
+ * true si la factura se leyó bien: código de 9 números (lo más importante) y un nombre legible.
+ * Si no, no se registra nada y se pide otra foto.
  */
-export function invoiceProblem({ code, codeSeen, codeConflict, name }) {
-  if (!code) {
-    if (codeConflict) return "El código del cliente no se leyó con claridad.";
-    if (codeSeen) {
-      return `Se leyó el código ${codeSeen} (${codeSeen.length} números), pero debe tener ${CODE_DIGITS}.`;
-    }
-    return "No se logró leer el código del cliente.";
-  }
+export function invoiceReadOk({ code, name }) {
   // Un nombre de verdad tiene letras; basura del OCR suele ser casi todo símbolos.
-  if (letters(name) < 3 || letters(name) < name.replace(/\s/g, "").length / 2) {
-    return "No se logró leer el nombre del cliente.";
-  }
-  return "";
+  const nameOk = letters(name) >= 3 && letters(name) >= name.replace(/\s/g, "").length / 2;
+  return Boolean(code) && nameOk;
 }
