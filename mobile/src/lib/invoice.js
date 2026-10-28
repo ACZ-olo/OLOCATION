@@ -288,8 +288,9 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
     : plain.code || "";
   const fields = {
     code,
-    name: layout.name || plain.name || "",
-    address: layout.address || plain.address || "",
+    // En la factura van siempre en mayúsculas: si el OCR lee alguna letra en minúscula, se corrige.
+    name: (layout.name || plain.name || "").toLocaleUpperCase("es"),
+    address: (layout.address || plain.address || "").toLocaleUpperCase("es"),
     // Con posiciones, las observaciones salen solo de lo que está debajo de la etiqueta: el texto
     // corrido podría dar cualquier renglón vecino.
     notes: (usable.length ? layout.notes : plain.notes) || "",
