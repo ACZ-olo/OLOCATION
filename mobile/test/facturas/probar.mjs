@@ -4,7 +4,7 @@
 // Uso (desde mobile/):  node test/facturas/probar.mjs [filtro]
 import { readFileSync } from "node:fs";
 import { createWorker } from "tesseract.js";
-import { invoiceReadOk, parseInvoice } from "../../src/lib/invoice.js";
+import { invoiceMissing, parseInvoice } from "../../src/lib/invoice.js";
 import { tesseractLines } from "../../src/lib/ocr-lines.js";
 
 const dir = new URL("./", import.meta.url);
@@ -40,7 +40,11 @@ let warned = 0;
 for (const { file, expect } of cases) {
   const { data } = await worker.recognize(new URL(`img/${file}`, dir).pathname.slice(1), {}, { text: true, blocks: true });
   const got = parseInvoice({ text: data.text || "", lines: tesseractLines(data) }); // igual que scanWeb()
-  got.ok = invoiceReadOk(got);
+  const missing = invoiceMissing(got);
+  got.ok = !missing.length;
+  // Un campo que el mensaje da por no leído no se registra: lo que haya quedado ahí no cuenta.
+  const FIELD = { código: "code", nombre: "name", dirección: "address" };
+  for (const m of missing) got[FIELD[m]] = "";
 
   const problems = [];
   for (const field of ["code", "name", "address", "notes", "ok"]) {
@@ -56,6 +60,10 @@ for (const { file, expect } of cases) {
       });
     }
   }
+  // El mensaje tiene que nombrar lo que de verdad no se pudo leer.
+  if (expect.missing && expect.missing.join() !== missing.join()) {
+    problems.push({ unread: false, text: `el mensaje dice que falta [${missing}], se esperaba [${expect.missing}]` });
+  }
   // Lo más importante: si la factura se da por bien leída, el código tiene que ser el correcto.
   const realCode = [expect.code].flat().find(Boolean);
   if (got.ok && realCode && got.code !== realCode) {
@@ -67,6 +75,7 @@ for (const { file, expect } of cases) {
   console.log(`${status}  ${file}`);
   console.log(`       código ${JSON.stringify(got.code)} · cliente ${JSON.stringify(got.name)}`);
   console.log(`       observaciones ${JSON.stringify(got.notes)}`);
+  if (missing.length) console.log(`       mensaje: no se pudo leer ${missing.join(", ")}`);
   for (const p of problems) console.log(`       ${p.unread ? "·" : "✗"} ${p.text}`);
 }
 await worker.terminate();

@@ -322,9 +322,9 @@ CASES = [
     dict(id="06_obs_con_direccion", client="pital", notes=[NOTE_DIR],
          expect=dict(notes=NOTE_DIR)),
     dict(id="07_codigo_8_digitos", client="llano", notes=[NOTE_1], code="02031047",
-         expect=dict(code="", notes=NOTE_1, ok=False)),
+         expect=dict(code="", notes=NOTE_1, ok=False, missing=["código"])),
     dict(id="08_codigo_10_digitos", client="llano", notes=[NOTE_1], code="0203104771",
-         expect=dict(code="", notes=NOTE_1, ok=False)),
+         expect=dict(code="", notes=NOTE_1, ok=False, missing=["código"])),
     dict(id="09_codigo_con_letras", client="liberia", notes=[], code="O5O4O2316",
          expect=dict(code="050402316", notes="Sin observaciones")),
     dict(id="10_codigo_partido", client="guapiles", notes=NOTE_2, code="0301 18094",
@@ -341,6 +341,13 @@ CASES = [
          expect=dict(notes="")),
     dict(id="16_sin_obs_borrosa", client="llano", notes=[], photo=dict(blur=3.0, dark=0.45),
          expect=dict(code=["020310477", ""], name=None, address=None, notes=["Sin observaciones", ""], ok=None)),
+    # Campos obligatorios en blanco: el mensaje tiene que decir cuál falta.
+    dict(id="17_sin_direccion", client="guapiles", notes=NOTE_2, data=dict(address=""),
+         expect=dict(address="", notes=" ".join(NOTE_2), ok=False, missing=["dirección"])),
+    dict(id="18_sin_nombre", client="liberia", notes=[], data=dict(name=""),
+         expect=dict(name="", notes="Sin observaciones", ok=False, missing=["nombre"])),
+    dict(id="19_sin_codigo_ni_direccion", client="pital", notes=[NOTE_DIR], code="", data=dict(address=""),
+         expect=dict(code="", address="", notes=NOTE_DIR, ok=False, missing=["código", "dirección"])),
 ]
 
 
@@ -349,6 +356,7 @@ def build(case, seed):
     rnd = random.Random(seed)
     data = dict(SAMPLE, **client, notes=case["notes"])
     data["code"] = case.get("code", client["code"])
+    data.update(case.get("data", {}))
     data["invoice_no"] = f"0010000101000{rnd.randint(7000000, 7999999)}"
     data["key"] = "5061410260031010967600010000101" + "".join(rnd.choice("0123456789") for _ in range(19))
     data["date"] = f"{rnd.randint(1, 28):02d}-10-2026"

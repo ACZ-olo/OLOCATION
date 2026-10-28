@@ -69,7 +69,10 @@
       "name": "AGROSERVICIOS EL LLANO S.A",
       "address": "HEREDIA, SARAPIQUI, PUERTO VIEJO 100 M SUR DEL BANCO NACIONAL, ND",
       "ok": false,
-      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN"
+      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN",
+      "missing": [
+        "código"
+      ]
     }
   },
   {
@@ -79,7 +82,10 @@
       "name": "AGROSERVICIOS EL LLANO S.A",
       "address": "HEREDIA, SARAPIQUI, PUERTO VIEJO 100 M SUR DEL BANCO NACIONAL, ND",
       "ok": false,
-      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN"
+      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN",
+      "missing": [
+        "código"
+      ]
     }
   },
   {
@@ -177,6 +183,46 @@
       "notes": [
         "Sin observaciones",
         ""
+      ]
+    }
+  },
+  {
+    "file": "17_sin_direccion.jpg",
+    "expect": {
+      "code": "030118094",
+      "name": "MATERIALES Y CONSTRUCCION CARIBE LTDA",
+      "address": "",
+      "ok": false,
+      "notes": "Cargado de FR - OC 60877 ENTREGAR EN GUAPILES, FRENTE A LA ESCUELA LIDER, PORTON VERDE",
+      "missing": [
+        "dirección"
+      ]
+    }
+  },
+  {
+    "file": "18_sin_nombre.jpg",
+    "expect": {
+      "code": "050402316",
+      "name": "",
+      "address": "GUANACASTE, LIBERIA, BARRIO LA VICTORIA FRENTE AL SUPER, ND",
+      "ok": false,
+      "notes": "Sin observaciones",
+      "missing": [
+        "nombre"
+      ]
+    }
+  },
+  {
+    "file": "19_sin_codigo_ni_direccion.jpg",
+    "expect": {
+      "code": "",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "",
+      "ok": false,
+      "notes": "ENTREGAR EN PITAL, DIRECCION: 200 M NORTE DE LA IGLESIA CATOLICA",
+      "missing": [
+        "código",
+        "dirección"
       ]
     }
   }

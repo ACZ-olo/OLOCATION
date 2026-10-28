@@ -10,7 +10,7 @@
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
-import { invoiceReadOk, parseInvoice } from "../lib/invoice.js";
+import { invoiceMissing, parseInvoice } from "../lib/invoice.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
 import { PhotoError } from "../lib/photo.js";
@@ -196,16 +196,23 @@ export function clearScan() {
   scan = null;
 }
 
+/** "el código", "el código y la dirección", "el código, el nombre y la dirección". */
+function missingText(missing) {
+  const items = missing.map((m) => `el ${m}`);
+  return items.length > 1 ? `${items.slice(0, -1).join(", ")} y ${items.at(-1)}` : items[0];
+}
+
 /**
- * La foto no se leyó bien: no se registra nada y se pide otra. Devuelve true si quiere
- * volver a tomar la foto.
+ * La foto no se leyó bien (falta el código, el nombre o la dirección): no se registra nada y se
+ * pide otra. Devuelve true si quiere volver a tomar la foto.
  */
-const askRetake = () =>
+const askRetake = (missing) =>
   confirmDialog({
     title: "No se logró leer la factura",
     body:
-      `<p>No se pudo leer correctamente. Tomá la foto de nuevo con buena luz, la factura derecha ` +
-      `y sin moverte, y que se vea bien el <strong>código</strong>.</p>`,
+      `<p>No se pudo leer <strong>${missingText(missing)}</strong> de la factura.</p>` +
+      `<p>Tomá la foto de nuevo con buena luz, la factura derecha y sin moverte, y que se vea ` +
+      `bien el recuadro del cliente (código, nombre y dirección).</p>`,
     accept: "Tomar otra foto",
   });
 
@@ -236,9 +243,10 @@ function showScan(fields) {
 async function scanFromStores(invoice) {
   const matches = matchInvoice(invoice, state.stores);
   let registered;
-  if (!invoiceReadOk(invoice)) {
+  const missing = invoiceMissing(invoice);
+  if (missing.length) {
     registered = {
-      text: "No se guardó en el registro nuevo: no se pudo leer correctamente. Tomá la foto de nuevo.",
+      text: `No se guardó en el registro nuevo: no se pudo leer ${missingText(missing)}. Tomá la foto de nuevo.`,
       tone: "warn",
     };
   } else {
@@ -266,9 +274,10 @@ async function scanFromStores(invoice) {
  * Devuelve true si hay que volver a tomar la foto.
  */
 async function scanFromInvoice(invoice) {
-  if (!invoiceReadOk(invoice)) {
+  const missing = invoiceMissing(invoice);
+  if (missing.length) {
     if (scan) closeScan(); // que no quede a la vista la tienda del escaneo anterior
-    return askRetake();
+    return askRetake(missing);
   }
   const result = await registerFromInvoice(invoice);
   if (!result) return false;

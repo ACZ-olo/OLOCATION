@@ -95,28 +95,33 @@ function fromLayout(lines) {
   const valueOf = (label, re) => {
     const own = afterLabel(label.text, re);
     if (own) return own;
+    // Lo de la derecha, pero no lo del otro lado de la hoja (la fecha, el teléfono…).
     const next = rightOf(lines, label)[0];
-    return next && isValue(next) ? cut(next.text) : "";
+    return next && isValue(next) && next.box.left < label.box.right + width * 0.4 ? cut(next.text) : "";
   };
 
-  // El código del cliente es SOLO el de arriba a la izquierda de la factura. "CODIGO" también es
-  // el título de la columna de productos: ese nunca se usa, aunque tenga un número al lado.
+  // Código, nombre y dirección son SOLO los del recuadro del cliente, arriba a la izquierda.
+  // "CODIGO" también es el título de la columna de productos, y "DIRECCION" puede aparecer en las
+  // observaciones: esos nunca se usan.
   const left = Math.min(...lines.map((l) => l.box.left));
   const top = Math.min(...lines.map((l) => l.box.top));
   const height = Math.max(...lines.map((l) => l.box.bottom)) - top;
-  const codeLabel =
-    labelsOf(LABELS.code).find((l) => l.box.left < left + width * 0.5 && l.box.top < top + height * 0.5) || null;
+  const clientLabel = (re) =>
+    labelsOf(re).find((l) => l.box.left < left + width * 0.5 && l.box.top < top + height * 0.5) || null;
+  const codeLabel = clientLabel(LABELS.code);
   if (codeLabel) fields.code = codeOf(valueOf(codeLabel, LABELS.code));
 
-  const nameLabel = labelsOf(LABELS.name)[0];
+  const addressLabel = clientLabel(LABELS.address);
+  const nameLabel = clientLabel(LABELS.name);
   if (nameLabel) fields.name = valueOf(nameLabel, LABELS.name);
-  if (!fields.name && codeLabel) {
-    // Sin la etiqueta NOMBRE: el renglón que está justo debajo del código.
-    const next = below(lines, codeLabel, 2.5, Infinity).find(isValue);
+  if (!fields.name && codeLabel && !nameLabel) {
+    // Sin la etiqueta NOMBRE: el renglón que está justo debajo del código (nunca la dirección).
+    const next = below(lines, codeLabel, 2.5, Infinity).find(
+      (l) => isValue(l) && (!addressLabel || l.box.top < addressLabel.box.top - h(addressLabel.box) * 0.5)
+    );
     if (next) fields.name = cut(next.text);
   }
 
-  const addressLabel = labelsOf(LABELS.address)[0];
   if (addressLabel) {
     // La dirección suele ir en el renglón de abajo, no al lado de la etiqueta (a veces el OCR la
     // da en dos pedazos: se juntan).
@@ -241,7 +246,10 @@ function fromText(text) {
   const fields = {};
   const rows = String(text || "").split(/\r?\n/).map(clean).filter(Boolean);
   let codeRow = false;
+  let notesRow = false; // de las observaciones para abajo ya no hay datos del cliente
   rows.forEach((row, i) => {
+    if (LABELS.notes.test(row)) notesRow = true;
+    if (notesRow && !LABELS.notes.test(row)) return;
     // Solo el primer CODIGO (el del cliente, arriba); los siguientes son de la tabla de productos.
     if (!codeRow && LABELS.code.test(row)) {
       codeRow = true;
@@ -251,7 +259,7 @@ function fromText(text) {
     if (!fields.name && LABELS.name.test(row)) {
       fields.name = afterLabel(row, LABELS.name) || next;
     }
-    if (!fields.address && LABELS.address.test(row)) {
+    if (!fields.address && !notesRow && LABELS.address.test(row)) {
       fields.address = afterLabel(row, LABELS.address) || next;
     }
     if (LABELS.notes.test(row)) {
@@ -267,7 +275,7 @@ function fromText(text) {
 /**
  * Campos de la factura a partir del resultado del OCR ({ text, lines }).
  * Devuelve { code, name, address, notes, place, text } (los que no se encontraron quedan vacíos).
- * Antes de usarlos, revisar invoiceReadOk().
+ * Antes de usarlos, revisar invoiceMissing().
  */
 export function parseInvoice({ text = "", lines = [] } = {}) {
   const usable = lines.filter((l) => l.box && clean(l.text));
@@ -287,7 +295,8 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
     notes: (usable.length ? layout.notes : plain.notes) || "",
   };
   // "… ENTREGAR EN PITAL": el lugar de entrega, en las observaciones o en cualquier parte.
-  const place = (fields.notes.match(PLACE) || String(text).match(PLACE) || [])[1];  fields.place = cut(place);
+  const place = (fields.notes.match(PLACE) || String(text).match(PLACE) || [])[1];
+  fields.place = cut(place);
   fields.text = text;
   return fields;
 }
@@ -296,11 +305,21 @@ const letters = (s) => (String(s || "").match(/\p{L}/gu) || []).length;
 const digits = (s) => (String(s || "").match(/\p{N}/gu) || []).length;
 
 /**
- * true si la factura se leyó bien: código de 9 números (lo más importante) y un nombre legible.
- * Si no, no se registra nada y se pide otra foto.
+ * Campos obligatorios que no se pudieron leer bien, en el orden de la factura:
+ * [] si está todo bien, o algunos de "código", "nombre", "dirección".
+ * Si falta alguno no se registra nada y se pide otra foto.
  */
-export function invoiceReadOk({ code, name }) {
+export function invoiceMissing({ code, name = "", address = "" }) {
+  const missing = [];
+  if (!code) missing.push("código"); // 9 números (ver codeOf)
   // Un nombre de verdad tiene letras; basura del OCR suele ser casi todo símbolos.
-  const nameOk = letters(name) >= 3 && letters(name) >= name.replace(/\s/g, "").length / 2;
-  return Boolean(code) && nameOk;
+  if (!(letters(name) >= 3 && letters(name) >= name.replace(/\s/g, "").length / 2)) missing.push("nombre");
+  // Una dirección tiene al menos dos palabras de verdad ("ALAJUELA, SAN CARLOS, …").
+  const chars = address.replace(/\s/g, "").length;
+  const words = address.split(/[\s,.]+/).filter((w) => letters(w) >= 3);
+  if (!(words.length >= 2 && letters(address) + digits(address) >= chars * 0.7)) missing.push("dirección");
+  return missing;
 }
+
+/** true si se leyeron bien el código, el nombre y la dirección (ver invoiceMissing). */
+export const invoiceReadOk = (invoice) => invoiceMissing(invoice).length === 0;
