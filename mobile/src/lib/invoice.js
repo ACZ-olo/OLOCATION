@@ -16,7 +16,11 @@ const LABELS = {
 // Otras etiquetas del recuadro del cliente: un valor nunca puede ser una de ellas.
 const OTHER_LABEL = /^(c[oó0]digo|n[oó0]mbre|direcci[oó0]n|fecha|tel[eé]fono|hora|vence|contribuyente|zona|ruta|v[ií]a|aut)\b/i;
 // Totales a la derecha del recuadro de observaciones.
-const TOTALS = /^(subtotal|descuento|impuesto|total)\b|₡|^[\d\s.,]+$/i;
+const TOTALS_LABEL = /^(sub\s*total|descuento|impuesto|total|i\.?v\.?a\.?)\b|₡/i;
+// Donde empiezan los totales cuando el OCR los junta en el mismo renglón de las observaciones.
+const TOTALS_INSIDE = /\b(sub\s*total|descuentos?|impuestos?|total\s*[:₡\d])|₡/i;
+/** Lo que se registra cuando el recuadro de observaciones está vacío. */
+export const NO_NOTES = "Sin observaciones";
 // El OCR puede leer toda una fila de la factura como un solo renglón
 // ("NOMBRE: NOVAGRO S.A TELEFONO: 2473…"): el valor termina donde empieza la etiqueta siguiente.
 const NEXT_LABEL =
@@ -120,18 +124,92 @@ function fromLayout(lines) {
   }
 
   const notesLabel = labelsOf(LABELS.notes).pop(); // el recuadro está abajo de la factura
-  if (notesLabel) {
-    // Los renglones seguidos debajo de la etiqueta; un salto grande es el texto legal del pie.
-    const rest = [];
-    let prev = notesLabel.box;
-    for (const l of below(lines, notesLabel, 8, notesLabel.box.left + width * 0.55)) {
-      if (l.box.top - prev.bottom > h(prev)) break;
-      if (!TOTALS.test(clean(l.text))) rest.push(cut(l.text));
-      prev = l.box;
-    }
-    fields.notes = [afterLabel(notesLabel.text, LABELS.notes), ...rest].filter(Boolean).join("\n");
-  }
+  if (notesLabel) fields.notes = notesBelow(lines, notesLabel);
   return fields;
+}
+
+/** Renglones agrupados por fila (los pedazos de una misma fila, de izquierda a derecha). */
+function rowsOf(lines) {
+  const rows = [];
+  for (const l of [...lines].sort((a, b) => midY(a.box) - midY(b.box))) {
+    const row = rows.find((r) => Math.abs(midY(r[0].box) - midY(l.box)) < h(r[0].box) * 0.6);
+    if (row) row.push(l);
+    else rows.push([l]);
+  }
+  return rows.map((r) => r.sort((a, b) => a.box.left - b.box.left));
+}
+
+/**
+ * Observaciones: SOLO el texto que está justo debajo de la etiqueta (normalmente un renglón,
+ * a lo sumo dos seguidos), nunca lo de alrededor: ni los totales de la derecha ni el pie de página.
+ * Si debajo no hay nada → NO_NOTES. Si hay algo pero no se entiende → "" (mejor vacío que inventado).
+ */
+function notesBelow(lines, label) {
+  const lb = label.box;
+  const lh = h(lb);
+  // A la derecha del recuadro están los totales: el texto llega hasta donde empiezan.
+  const totals = lines.filter(
+    (l) => l !== label && l.box.left > lb.right && TOTALS_LABEL.test(clean(l.text)) && l.box.top < lb.bottom + lh * 4
+  );
+  const maxRight = totals.length ? Math.min(...totals.map((l) => l.box.left)) : Infinity;
+  const candidates = lines.filter(
+    (l) => l !== label && l.box.top >= lb.bottom - lh * 0.5 && l.box.left < maxRight && l.box.right > lb.left - lh * 3
+  );
+
+  const taken = [];
+  let prev = lb;
+  for (const row of rowsOf(candidates)) {
+    const first = row[0].box;
+    // Primer renglón pegado a la etiqueta y empezando debajo de ella; el segundo, pegado al primero.
+    const gap = first.top - prev.bottom;
+    if (gap > (taken.length ? h(prev) * 0.8 : lh * 1.8)) break;
+    if (first.left > lb.right + lh * 4) break;
+    const raw = row.map((l) => l.text).join(" ");
+    const text = notesText(raw);
+    if (!text) {
+      // Algo hay pero no se entiende (las rayas del recuadro no cuentan): no se puede decir que
+      // no haya observaciones.
+      if (raw.replace(/[\s\-_|—=.]/g, "").length >= 2 && !taken.length) return "";
+      break;
+    }
+    taken.push(text);
+    prev = row.reduce((b, l) => (l.box.bottom > b.bottom ? l.box : b), first);
+    if (taken.length === 2) break;
+  }
+
+  // El texto en el mismo renglón de la etiqueta ("Observaciones: ENTREGAR EN PITAL") también vale.
+  const own = notesText(afterText(label.text, LABELS.notes));
+  const notes = [own, ...taken].filter(Boolean).join(" ");
+  if (!notes) return NO_NOTES;
+  return legible(notes) ? notes : "";
+}
+
+/** Texto después de la etiqueta, sin recortarlo (las observaciones son texto libre). */
+function afterText(text, re) {
+  const m = text.match(re);
+  return m ? text.slice(m.index + m[0].length) : "";
+}
+
+/** Texto de observaciones hasta donde empiezan los totales, sin signos sueltos en las puntas. */
+function notesText(value) {
+  const text = clean(value);
+  const m = text.match(TOTALS_INSIDE);
+  return clean(m ? text.slice(0, m.index) : text)
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/[^\p{L}\p{N}.)]+$/u, "");
+}
+
+/** true si el texto parece escrito de verdad y no basura del OCR (foto borrosa o cortada). */
+function legible(text) {
+  const chars = text.replace(/\s/g, "");
+  const words = text.split(" ");
+  const real = words.filter((w) => /^[\p{L}\p{N}][\p{L}\p{N}.,:;/#()-]*$/u.test(w) && /[\p{L}\p{N}]{2}/u.test(w));
+  return (
+    letters(text) >= 3 &&
+    letters(text) + digits(text) >= chars.length * 0.75 &&
+    real.length >= words.length * 0.7 &&
+    words.some((w) => letters(w) >= 3)
+  );
 }
 
 function fromText(text) {
@@ -152,9 +230,10 @@ function fromText(text) {
       fields.address = afterLabel(row, LABELS.address) || next;
     }
     if (LABELS.notes.test(row)) {
-      fields.notes = [afterLabel(row, LABELS.notes), ...rows.slice(i + 1, i + 3).filter((t) => !TOTALS.test(t)).map(cut)]
-        .filter(Boolean)
-        .join("\n");
+      // Sin posiciones no se sabe qué está debajo de la etiqueta: solo vale lo del mismo renglón,
+      // y si no hay nada queda vacío (no se adivina).
+      const own = notesText(afterText(row, LABELS.notes));
+      fields.notes = own && legible(own) ? own : "";
     }
   });
   return fields;
@@ -178,16 +257,18 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
     code,
     name: layout.name || plain.name || "",
     address: layout.address || plain.address || "",
-    notes: layout.notes || plain.notes || "",
+    // Con posiciones, las observaciones salen solo de lo que está debajo de la etiqueta: el texto
+    // corrido podría dar cualquier renglón vecino.
+    notes: (usable.length ? layout.notes : plain.notes) || "",
   };
   // "… ENTREGAR EN PITAL": el lugar de entrega, en las observaciones o en cualquier parte.
-  const place = (fields.notes.match(PLACE) || String(text).match(PLACE) || [])[1];
-  fields.place = cut(place);
+  const place = (fields.notes.match(PLACE) || String(text).match(PLACE) || [])[1];  fields.place = cut(place);
   fields.text = text;
   return fields;
 }
 
 const letters = (s) => (String(s || "").match(/\p{L}/gu) || []).length;
+const digits = (s) => (String(s || "").match(/\p{N}/gu) || []).length;
 
 /**
  * true si la factura se leyó bien: código de 9 números (lo más importante) y un nombre legible.

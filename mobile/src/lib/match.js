@@ -8,6 +8,7 @@
 // tolerancia. Las palabras que se repiten en muchas tiendas ("super", "farmacia") pesan menos
 // que las que identifican a una sola.
 import { normalize } from "./format.js";
+import { NO_NOTES } from "./invoice.js";
 
 const STOPWORDS = new Set([
   "de", "del", "la", "las", "el", "los", "y", "e", "en", "al", "a", "o",
@@ -129,11 +130,12 @@ export function matchInvoice(invoice, stores) {
     indexFor = stores;
   }
 
-  const fields = [invoice.name, invoice.address, invoice.notes].filter(Boolean).join("\n");
+  const notes = invoice.notes === NO_NOTES ? "" : invoice.notes;
+  const fields = [invoice.name, invoice.address, notes].filter(Boolean).join("\n");
   // Si la factura no tiene el formato esperado (sin campos), se busca en todo el texto.
   const inFields = finder(fields || invoice.text);
   const inName = finder(invoice.name || "");
-  const placeText = invoice.place || invoice.notes || "";
+  const placeText = invoice.place || notes || "";
   const inPlace = finder(placeText);
   const inAddress = finder(invoice.address || "");
   const invoiceCode = compact(invoice.code);
