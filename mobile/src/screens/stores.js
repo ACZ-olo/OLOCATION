@@ -5,8 +5,7 @@
 // Escanear una factura SIEMPRE registra su cliente en el registro nuevo si el código todavía no
 // está. Admin: desde el registro viejo además se muestran las tiendas que coinciden; desde el
 // nuevo se abre directamente el registro. Transportista: se muestra la tienda escaneada para
-// tocarla (ficha → guardar ubicación). El admin tiene pestañas, buscador y filtros (estos solo
-// en el registro nuevo); el transportista, en el inicio, solo el botón de escanear, y tras
+// tocarla (ficha → guardar ubicación). El admin tiene pestañas y buscador; el transportista, en el inicio, solo el botón de escanear, y tras
 // escanear solo el resultado (ver body[data-role] en styles.css).
 import { registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
@@ -21,18 +20,12 @@ import { MODULES, findStore, loadStores, state, storesOf, updateStore } from "..
 import { handleDataError, lockApp } from "./common.js";
 
 const MAX_RENDERED = 150; // con miles de tiendas, se muestran las primeras y se pide afinar
-const FILTERS = {
-  all: () => true,
-  pending: (s) => s.changeCount === 0,
-  done: (s) => s.changeCount > 0,
-};
 const emptyMessage = () =>
   module === "stores"
     ? "No hay tiendas cargadas todavía en el registro viejo."
     : "Todavía no hay tiendas registradas. Escaneá una factura para registrar la primera.";
 
 let module = "stores";
-let filter = "all";
 let renderedKey = "";
 // Resultado del último escaneo de factura (solo en Tiendas): mientras exista, la lista muestra
 // solo esas tiendas.
@@ -53,9 +46,7 @@ const haystack = (s) => {
 
 function filtered() {
   const terms = normalize($("storeSearch").value).split(/\s+/).filter(Boolean);
-  return storesOf(module).filter(
-    (s) => FILTERS[filter](s) && terms.every((t) => haystack(s).includes(t))
-  );
+  return storesOf(module).filter((s) => terms.every((t) => haystack(s).includes(t)));
 }
 
 function storeItem(s, best = false) {
@@ -108,13 +99,9 @@ function render({ force = false } = {}) {
   $("storesBody").classList.toggle("home", !scan); // transportista: inicio solo con el botón
   const all = storesOf(module);
   if (!all) return;
-  const key = `${state.version}|${module}|${filter}|${$("storeSearch").value}|${scan?.seq ?? ""}`;
+  const key = `${state.version}|${module}|${$("storeSearch").value}|${scan?.seq ?? ""}`;
   if (!force && key === renderedKey) return; // nada cambió: se conserva el scroll
   renderedKey = key;
-
-  $("countAll").textContent = all.length;
-  $("countPending").textContent = all.filter(FILTERS.pending).length;
-  $("countDone").textContent = all.filter(FILTERS.done).length;
 
   $("scanPanel").hidden = !scan;
   if (scan) {
@@ -142,7 +129,7 @@ function render({ force = false } = {}) {
   if (!all.length) {
     setMsg("storesMsg", emptyMessage());
   } else if (!items.length) {
-    setMsg("storesMsg", query ? "Ninguna tienda coincide con la búsqueda." : "No hay tiendas en este filtro.");
+    setMsg("storesMsg", "Ninguna tienda coincide con la búsqueda.");
   } else {
     setMsg("storesMsg", "");
   }
@@ -218,7 +205,7 @@ const askRetake = () =>
     title: "No se logró leer la factura",
     body:
       `<p>No se pudo leer correctamente. Tomá la foto de nuevo con buena luz, la factura derecha ` +
-      `y sin moverte, y que se vea bien el <strong>código de arriba a la izquierda</strong>.</p>`,
+      `y sin moverte, y que se vea bien el <strong>código</strong>.</p>`,
     accept: "Tomar otra foto",
   });
 
@@ -365,20 +352,6 @@ $("storeSearch").addEventListener("keydown", (e) => {
   if (e.key === "Enter") e.target.blur(); // oculta el teclado para ver los resultados
 });
 
-for (const btn of document.querySelectorAll(".filter")) {
-  btn.addEventListener("click", () => {
-    filter = btn.dataset.filter;
-    scan = null;
-    for (const b of document.querySelectorAll(".filter")) {
-      const on = b === btn;
-      b.classList.toggle("on", on);
-      b.setAttribute("aria-pressed", String(on));
-    }
-    render();
-    $("storesBody").scrollTop = 0;
-  });
-}
-
 // Cambiar de pestaña no apila historial (igual que la barra inferior).
 for (const tab of document.querySelectorAll(".module-tab")) {
   tab.addEventListener("click", () => {
@@ -413,18 +386,13 @@ function listScreen(key) {
         $("storeSearch").value = "";
         $("stores").innerHTML = "";
         $("storesSummary").textContent = "";
-        for (const id of ["countAll", "countPending", "countDone"]) $(id).textContent = "";
         setMsg("storesMsg", "");
         $("storesBody").scrollTop = 0;
         renderedKey = "";
       }
       const admin = isAdmin();
-      // El transportista no tiene buscador ni filtros: no puede quedar uno puesto del admin.
+      // El transportista no tiene buscador: no puede quedar puesta una búsqueda del admin.
       if (!admin) $("storeSearch").value = "";
-      // En el registro viejo no hay filtros: siempre se muestran todas.
-      const filters = admin && module !== "stores";
-      $("storeFilters").hidden = !filters;
-      if (!filters && filter !== "all") document.querySelector('.filter[data-filter="all"]').click();
       $("scanClose").textContent = admin ? "Ver todas las tiendas" : "Volver al inicio";
       $("scanInvoice").querySelector("span").textContent =
         admin && module === "invoice" ? "Escanear factura y registrar" : "Escanear factura";
