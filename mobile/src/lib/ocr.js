@@ -4,6 +4,7 @@
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem } from "@capacitor/filesystem";
+import { mlkitLines, tesseractLines } from "./ocr-lines.js";
 import { PhotoError, takePhoto, toDataUrl } from "./photo.js";
 
 const native = Capacitor.isNativePlatform();
@@ -31,10 +32,7 @@ async function scanNative() {
   try {
     const { TextRecognition, Script } = await import("@capacitor-mlkit/text-recognition");
     const { text, blocks } = await TextRecognition.processImage({ path: photo.path, script: Script.Latin });
-    const lines = (blocks || []).flatMap((b) =>
-      (b.lines || []).map((l) => ({ text: l.text || "", box: l.boundingBox }))
-    );
-    return { text: text || "", lines };
+    return { text: text || "", lines: mlkitLines(blocks) };
   } catch {
     throw new PhotoError("INVALID", "No se pudo leer el texto de la factura.");
   } finally {
@@ -50,15 +48,7 @@ async function scanWeb() {
     const worker = await createWorker("spa");
     try {
       const { data } = await worker.recognize(toDataUrl(base64, mimeType), {}, { text: true, blocks: true });
-      const lines = (data.blocks || []).flatMap((b) =>
-        (b.paragraphs || []).flatMap((p) =>
-          (p.lines || []).map((l) => ({
-            text: (l.text || "").trim(),
-            box: { left: l.bbox.x0, top: l.bbox.y0, right: l.bbox.x1, bottom: l.bbox.y1 },
-          }))
-        )
-      );
-      return { text: data.text || "", lines };
+      return { text: data.text || "", lines: tesseractLines(data) };
     } finally {
       worker.terminate();
     }

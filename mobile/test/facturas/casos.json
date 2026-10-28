@@ -1,0 +1,183 @@
+[
+  {
+    "file": "01_obs_un_renglon.jpg",
+    "expect": {
+      "code": "020310477",
+      "name": "AGROSERVICIOS EL LLANO S.A",
+      "address": "HEREDIA, SARAPIQUI, PUERTO VIEJO 100 M SUR DEL BANCO NACIONAL, ND",
+      "ok": true,
+      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN"
+    }
+  },
+  {
+    "file": "02_obs_larga_ruta_hora.jpg",
+    "expect": {
+      "code": "020215532",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "ALAJUELA, SAN CARLOS, PITAL CONTIGUO A LA PLAZA DE DEPORTES, ND",
+      "ok": true,
+      "notes": "ENTREGAR EN BODEGA CENTRAL RUTA 32, RECIBE DON CARLOS ANTES DE LA HORA DE ALMUERZO"
+    }
+  },
+  {
+    "file": "03_obs_dos_renglones.jpg",
+    "expect": {
+      "code": "030118094",
+      "name": "MATERIALES Y CONSTRUCCION CARIBE LTDA",
+      "address": "LIMON, POCOCI, GUAPILES 300 M ESTE DEL HOSPITAL, ND",
+      "ok": true,
+      "notes": "Cargado de FR - OC 60877 ENTREGAR EN GUAPILES, FRENTE A LA ESCUELA LIDER, PORTON VERDE"
+    }
+  },
+  {
+    "file": "04_sin_observaciones.jpg",
+    "expect": {
+      "code": "050402316",
+      "name": "DEPOSITO EL GUANACASTE S.A",
+      "address": "GUANACASTE, LIBERIA, BARRIO LA VICTORIA FRENTE AL SUPER, ND",
+      "ok": true,
+      "notes": "Sin observaciones"
+    }
+  },
+  {
+    "file": "05_obs_con_lapicero.jpg",
+    "expect": {
+      "code": "020215532",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "ALAJUELA, SAN CARLOS, PITAL CONTIGUO A LA PLAZA DE DEPORTES, ND",
+      "ok": true,
+      "notes": [
+        "Cargado de FR - OC 60516ENTREGAR EN PITAL",
+        ""
+      ]
+    }
+  },
+  {
+    "file": "06_obs_con_direccion.jpg",
+    "expect": {
+      "code": "020215532",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "ALAJUELA, SAN CARLOS, PITAL CONTIGUO A LA PLAZA DE DEPORTES, ND",
+      "ok": true,
+      "notes": "ENTREGAR EN PITAL, DIRECCION: 200 M NORTE DE LA IGLESIA CATOLICA"
+    }
+  },
+  {
+    "file": "07_codigo_8_digitos.jpg",
+    "expect": {
+      "code": "",
+      "name": "AGROSERVICIOS EL LLANO S.A",
+      "address": "HEREDIA, SARAPIQUI, PUERTO VIEJO 100 M SUR DEL BANCO NACIONAL, ND",
+      "ok": false,
+      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN"
+    }
+  },
+  {
+    "file": "08_codigo_10_digitos.jpg",
+    "expect": {
+      "code": "",
+      "name": "AGROSERVICIOS EL LLANO S.A",
+      "address": "HEREDIA, SARAPIQUI, PUERTO VIEJO 100 M SUR DEL BANCO NACIONAL, ND",
+      "ok": false,
+      "notes": "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN"
+    }
+  },
+  {
+    "file": "09_codigo_con_letras.jpg",
+    "expect": {
+      "code": "050402316",
+      "name": "DEPOSITO EL GUANACASTE S.A",
+      "address": "GUANACASTE, LIBERIA, BARRIO LA VICTORIA FRENTE AL SUPER, ND",
+      "ok": true,
+      "notes": "Sin observaciones"
+    }
+  },
+  {
+    "file": "10_codigo_partido.jpg",
+    "expect": {
+      "code": "030118094",
+      "name": "MATERIALES Y CONSTRUCCION CARIBE LTDA",
+      "address": "LIMON, POCOCI, GUAPILES 300 M ESTE DEL HOSPITAL, ND",
+      "ok": true,
+      "notes": "Cargado de FR - OC 60877 ENTREGAR EN GUAPILES, FRENTE A LA ESCUELA LIDER, PORTON VERDE"
+    }
+  },
+  {
+    "file": "11_codigo_con_guiones.jpg",
+    "expect": {
+      "code": "020215532",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "ALAJUELA, SAN CARLOS, PITAL CONTIGUO A LA PLAZA DE DEPORTES, ND",
+      "ok": true,
+      "notes": "ENTREGAR EN PITAL, DIRECCION: 200 M NORTE DE LA IGLESIA CATOLICA"
+    }
+  },
+  {
+    "file": "12_foto_borrosa.jpg",
+    "expect": {
+      "code": [
+        "020310477",
+        ""
+      ],
+      "name": null,
+      "address": null,
+      "ok": null,
+      "notes": [
+        "Cargado de FR - OC 61204ENTREGAR EN LA VIRGEN",
+        ""
+      ]
+    }
+  },
+  {
+    "file": "13_foto_oscura.jpg",
+    "expect": {
+      "code": "030118094",
+      "name": "MATERIALES Y CONSTRUCCION CARIBE LTDA",
+      "address": "LIMON, POCOCI, GUAPILES 300 M ESTE DEL HOSPITAL, ND",
+      "ok": true,
+      "notes": [
+        "Cargado de FR - OC 60877 ENTREGAR EN GUAPILES, FRENTE A LA ESCUELA LIDER, PORTON VERDE",
+        ""
+      ]
+    }
+  },
+  {
+    "file": "14_foto_muy_inclinada.jpg",
+    "expect": {
+      "code": "050402316",
+      "name": "DEPOSITO EL GUANACASTE S.A",
+      "address": "GUANACASTE, LIBERIA, BARRIO LA VICTORIA FRENTE AL SUPER, ND",
+      "ok": true,
+      "notes": [
+        "Sin observaciones",
+        ""
+      ]
+    }
+  },
+  {
+    "file": "15_foto_cortada_abajo.jpg",
+    "expect": {
+      "code": "020215532",
+      "name": "FERRETERIA LA COSECHA DEL NORTE S.A",
+      "address": "ALAJUELA, SAN CARLOS, PITAL CONTIGUO A LA PLAZA DE DEPORTES, ND",
+      "ok": true,
+      "notes": ""
+    }
+  },
+  {
+    "file": "16_sin_obs_borrosa.jpg",
+    "expect": {
+      "code": [
+        "020310477",
+        ""
+      ],
+      "name": null,
+      "address": null,
+      "ok": null,
+      "notes": [
+        "Sin observaciones",
+        ""
+      ]
+    }
+  }
+]

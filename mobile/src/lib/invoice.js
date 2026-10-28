@@ -47,7 +47,7 @@ const CODE_DIGITS = 9;
  */
 function numberOf(text) {
   const fixed = text.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[sS]/g, "5").replace(/B/g, "8");
-  return /^\d[\d-]{3,}\d$/.test(fixed) ? fixed.replace(/\D/g, "") : "";
+  return /^\d[\d.-]{3,}\d$/.test(fixed) ? fixed.replace(/\D/g, "") : ""; // "020-215-532", "020.215.532"
 }
 
 /** Código de 9 números al principio del valor, o "" si no lo hay (o tiene otra cantidad). */
@@ -118,9 +118,12 @@ function fromLayout(lines) {
 
   const addressLabel = labelsOf(LABELS.address)[0];
   if (addressLabel) {
-    // La dirección suele ir en el renglón de abajo, no al lado de la etiqueta.
-    const next = below(lines, addressLabel, 2.5, addressLabel.box.left + width * 0.5).find(isValue);
-    fields.address = afterLabel(addressLabel.text, LABELS.address) || (next ? cut(next.text) : "");
+    // La dirección suele ir en el renglón de abajo, no al lado de la etiqueta (a veces el OCR la
+    // da en dos pedazos: se juntan).
+    const row = rowsOf(below(lines, addressLabel, 2.5, addressLabel.box.left + width * 0.5)).find((r) =>
+      isValue(r[0])
+    );
+    fields.address = afterLabel(addressLabel.text, LABELS.address) || (row ? cut(row.map((l) => l.text).join(" ")) : "");
   }
 
   const notesLabel = labelsOf(LABELS.notes).pop(); // el recuadro está abajo de la factura
@@ -128,11 +131,19 @@ function fromLayout(lines) {
   return fields;
 }
 
-/** Renglones agrupados por fila (los pedazos de una misma fila, de izquierda a derecha). */
+/**
+ * Renglones agrupados por fila (los pedazos de una misma fila, de izquierda a derecha). Solo se
+ * juntan pedazos que están uno al lado del otro y cerca: dos textos uno encima del otro son
+ * filas distintas aunque sus cajas se encimen.
+ */
 function rowsOf(lines) {
   const rows = [];
+  const beside = (a, b) =>
+    Math.abs(midY(a.box) - midY(b.box)) < Math.min(h(a.box), h(b.box)) * 0.6 &&
+    (b.box.left >= a.box.right ? b.box.left - a.box.right : a.box.left - b.box.right) >= -h(a.box) * 0.3 &&
+    Math.max(b.box.left - a.box.right, a.box.left - b.box.right) < Math.max(h(a.box), h(b.box)) * 4;
   for (const l of [...lines].sort((a, b) => midY(a.box) - midY(b.box))) {
-    const row = rows.find((r) => Math.abs(midY(r[0].box) - midY(l.box)) < h(r[0].box) * 0.6);
+    const row = rows.find((r) => r.some((m) => beside(m, l)));
     if (row) row.push(l);
     else rows.push([l]);
   }
@@ -149,7 +160,8 @@ function notesBelow(lines, label) {
   const lh = h(lb);
   // A la derecha del recuadro están los totales: el texto llega hasta donde empiezan.
   const totals = lines.filter(
-    (l) => l !== label && l.box.left > lb.right && TOTALS_LABEL.test(clean(l.text)) && l.box.top < lb.bottom + lh * 4
+    (l) =>
+      l !== label && l.box.left > lb.left + lh * 3 && TOTALS_LABEL.test(clean(l.text)) && l.box.top < lb.bottom + lh * 4
   );
   const maxRight = totals.length ? Math.min(...totals.map((l) => l.box.left)) : Infinity;
   const candidates = lines.filter(
@@ -157,20 +169,24 @@ function notesBelow(lines, label) {
   );
 
   const taken = [];
+  // Hubo marcas que no se entienden (un círculo de lapicero, un sello): si al final no aparece
+  // texto, no se puede asegurar que no haya observaciones.
+  const ownRaw = afterText(label.text, LABELS.notes);
+  let marks = isMark(ownRaw);
   let prev = lb;
   for (const row of rowsOf(candidates)) {
     const first = row[0].box;
     // Primer renglón pegado a la etiqueta y empezando debajo de ella; el segundo, pegado al primero.
     const gap = first.top - prev.bottom;
     if (gap > (taken.length ? h(prev) * 0.8 : lh * 1.8)) break;
-    if (first.left > lb.right + lh * 4) break;
+    if (first.left > lb.right + lh * 4) continue; // algo suelto a la derecha, no debajo de la etiqueta
     const raw = row.map((l) => l.text).join(" ");
     const text = notesText(raw);
     if (!text) {
-      // Algo hay pero no se entiende (las rayas del recuadro no cuentan): no se puede decir que
-      // no haya observaciones.
-      if (raw.replace(/[\s\-_|—=.]/g, "").length >= 2 && !taken.length) return "";
-      break;
+      // Rayas del recuadro o trazos de lapicero: se saltan y se sigue buscando debajo.
+      marks ||= isMark(raw);
+      if (taken.length) break;
+      continue;
     }
     taken.push(text);
     prev = row.reduce((b, l) => (l.box.bottom > b.bottom ? l.box : b), first);
@@ -178,11 +194,13 @@ function notesBelow(lines, label) {
   }
 
   // El texto en el mismo renglón de la etiqueta ("Observaciones: ENTREGAR EN PITAL") también vale.
-  const own = notesText(afterText(label.text, LABELS.notes));
-  const notes = [own, ...taken].filter(Boolean).join(" ");
-  if (!notes) return NO_NOTES;
+  const notes = [notesText(ownRaw), ...taken].filter(Boolean).join(" ").replace(/[\s,;:\-–—]+$/u, "");
+  if (!notes) return marks ? "" : NO_NOTES;
   return legible(notes) ? notes : "";
 }
+
+/** Algo escrito que no es texto (no cuentan las rayas del recuadro ni un punto suelto). */
+const isMark = (raw) => raw.replace(/[\s\-_|—=]/g, "").length >= 3;
 
 /** Texto después de la etiqueta, sin recortarlo (las observaciones son texto libre). */
 function afterText(text, re) {
@@ -190,20 +208,27 @@ function afterText(text, re) {
   return m ? text.slice(m.index + m[0].length) : "";
 }
 
-/** Texto de observaciones hasta donde empiezan los totales, sin signos sueltos en las puntas. */
+// Una palabra de verdad: letras y números con la puntuación normal de una dirección o una orden.
+const WORD = /^[\p{L}\p{N}][\p{L}\p{N}.,:;/#()-]*$/u;
+
+/**
+ * Texto de observaciones hasta donde empiezan los totales, sin la basura de las puntas
+ * (rayas del recuadro, un círculo de lapicero alrededor: "Q.«“fQ. Cargado de …" → "Cargado de …").
+ */
 function notesText(value) {
   const text = clean(value);
   const m = text.match(TOTALS_INSIDE);
-  return clean(m ? text.slice(0, m.index) : text)
-    .replace(/^[^\p{L}\p{N}]+/u, "")
-    .replace(/[^\p{L}\p{N}.)]+$/u, "");
+  const words = clean(m ? text.slice(0, m.index) : text).split(" ");
+  while (words.length && !WORD.test(words[0])) words.shift();
+  while (words.length && !/[\p{L}\p{N}]/u.test(words.at(-1))) words.pop();
+  return words.join(" ");
 }
 
 /** true si el texto parece escrito de verdad y no basura del OCR (foto borrosa o cortada). */
 function legible(text) {
   const chars = text.replace(/\s/g, "");
   const words = text.split(" ");
-  const real = words.filter((w) => /^[\p{L}\p{N}][\p{L}\p{N}.,:;/#()-]*$/u.test(w) && /[\p{L}\p{N}]{2}/u.test(w));
+  const real = words.filter((w) => WORD.test(w) && /[\p{L}\p{N}]{2}/u.test(w));
   return (
     letters(text) >= 3 &&
     letters(text) + digits(text) >= chars.length * 0.75 &&
