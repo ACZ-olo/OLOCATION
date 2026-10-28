@@ -394,8 +394,6 @@ function listScreen(key) {
       // El transportista no tiene buscador: no puede quedar puesta una búsqueda del admin.
       if (!admin) $("storeSearch").value = "";
       $("scanClose").textContent = admin ? "Ver todas las tiendas" : "Volver al inicio";
-      $("scanInvoice").querySelector("span").textContent =
-        admin && module === "invoice" ? "Escanear factura y registrar" : "Escanear factura";
       renderTabs();
       if (!storesOf(module)) $("scanPanel").hidden = true;
       render();
