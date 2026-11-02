@@ -60,16 +60,21 @@ export function initDialog() {
   $("dialog").addEventListener("click", (e) => {
     if (e.target === $("dialog")) openDialog?.(false);
   });
-  // Teclado: Esc cancela y Tab no sale del diálogo (solo tiene los dos botones).
+  // Teclado: Esc cancela y Tab no sale del diálogo (recorre sus campos y botones).
   document.addEventListener("keydown", (e) => {
     if (!openDialog) return;
     if (e.key === "Escape") {
       e.preventDefault();
       openDialog(false);
     } else if (e.key === "Tab") {
+      const items = [...$("dialog").querySelectorAll("input, textarea, select, button")].filter(
+        (el) => !el.disabled && el.offsetParent !== null
+      );
+      if (!items.length) return;
       e.preventDefault();
-      const next = document.activeElement === $("dialogAccept") ? $("dialogCancel") : $("dialogAccept");
-      next.focus();
+      const i = items.indexOf(document.activeElement);
+      const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : (i + 1) % items.length;
+      items[next].focus();
     }
   });
 }

@@ -12,7 +12,7 @@ historial de sus cambios de ubicación.
 | **Acceso** | Dos contraseñas: **admin** y **empleados** (transportistas). Opción de recordar el dispositivo. |
 | **Transportista: Tiendas** | Botón grande **Escanear factura** y la lista de tiendas del registro nuevo (sin buscador ni filtros). Al escanear se muestra la tienda de la factura (registrándola si era nueva); se toca → ficha → **Guardar ubicación** → vuelve al inicio. No borra historial. |
 | **Admin: Registro viejo** | El listado original, con buscador y filtros. Solo consulta y borrado de historial: ya no se registran ubicaciones. |
-| **Admin: Registro nuevo** | Los clientes registrados al escanear facturas, con código, nombre, dirección y observaciones tal cual la factura. Coordenada e historial propios. |
+| **Admin: Registro nuevo** | Los clientes registrados al escanear facturas, con código, nombre, dirección y observaciones tal cual la factura, y **Ubicación - Observaciones** (la dirección que traen las observaciones, normalizada con IA, o "Sin dirección en observaciones"). Coordenada e historial propios. Si se vuelve a escanear un cliente, solo se completan sus observaciones y Ubicación - Observaciones si estaban vacías. El admin puede **editar** todos los datos menos la coordenada. |
 | **Escanear factura** | Foto de la factura → lee el texto (OCR). Si el código no está en el registro nuevo, lo registra (sin código o nombre legibles no registra). Admin: desde el registro viejo muestra las coincidencias; desde el nuevo abre el registro. No guarda la foto. |
 | **Tienda** | Datos, coordenada vigente, conteo e historial de cambios y el botón **Guardar ubicación** (solo en el registro nuevo). |
 | **Guardar ubicación** | Mide el GPS del teléfono (hasta ~12 s, se queda con la lectura más precisa) y la guarda. No se puede elegir un punto a mano. |
@@ -26,8 +26,13 @@ historial de sus cambios de ubicación.
    esa tienda. Si varias sucursales comparten el código, primero la del lugar de entrega.
 3. **Sin código exacto**: primero las tiendas cuyo código difiere en un solo dígito (por si el OCR
    leyó mal un número) y después las que coinciden por nombre, con un aviso para comparar.
+4. **IA (OpenAI, en el servidor), solo para las observaciones**: si traen texto, decide si indican
+   una dirección de entrega y la normaliza para "Ubicación - Observaciones". No toca el código,
+   el nombre ni la dirección del cliente (si no se leen, se pide otra foto). Sin IA el escaneo
+   funciona igual.
 
-La lógica está en `mobile/src/lib/invoice.js` (lectura de campos) y `mobile/src/lib/match.js`
+La lógica está en `mobile/src/lib/invoice.js` (lectura de campos), `mobile/src/lib/invoice-ai.js`
+(ayuda de IA, con la Edge Function `supabase/functions/analyze-invoice`) y `mobile/src/lib/match.js`
 (búsqueda de la tienda).
 
 ## Estructura del repositorio

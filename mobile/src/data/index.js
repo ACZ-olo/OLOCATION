@@ -17,14 +17,20 @@
  *
  * Registro nuevo (clientes tal cual la factura escaneada; solo Supabase):
  *   listInvoiceStores(token)            → InvoiceStore[]
- *   registerInvoiceStore(token, { code, name, address, notes })
- *                                       → { store: InvoiceStore, created }  (si el código ya
- *                                         estaba registrado devuelve ese, sin cambios)
+ *   registerInvoiceStore(token, { code, name, address, notes, notesLocation })
+ *                                       → { store: InvoiceStore, created, filled }  (si el código
+ *                                         ya estaba registrado devuelve ese; solo completa notes /
+ *                                         notesLocation si estaban vacías: filled dice cuáles)
+ *   updateInvoiceStore(token, storeId, { code, name, address, notes, notesLocation })
+ *                                       → { store: InvoiceStore }   (solo admin; sin coordenada)
+ *   analyzeInvoice(token, { notes, address })
+ *                                       → { notesIsAddress, notesLocation }  (IA en el servidor,
+ *                                         solo para las observaciones; ver lib/invoice-ai.js)
  *   listInvoiceLocationChanges / registerInvoiceLocation / deleteInvoiceLocationChange /
  *   deleteInvoiceStore                  → igual que las de tiendas
  *
  * Store          { id, code, name, address, latitude, longitude, locationUpdatedAt, changeCount }
- * InvoiceStore   Store + { notes, createdAt }
+ * InvoiceStore   Store + { notes, notesLocation, createdAt }
  * LocationChange { id, storeId, latitude, longitude, accuracyM, source: "gps"|"map",
  *                  previousLatitude, previousLongitude, createdAt }
  * Los errores son siempre DataError (ver errors.js).
@@ -64,6 +70,9 @@ export const restoreBackup = async (token, backup) => (await provider()).restore
 export const listInvoiceStores = async (token) => (await provider()).listInvoiceStores(token);
 export const registerInvoiceStore = async (token, fields) =>
   (await provider()).registerInvoiceStore(token, fields);
+export const analyzeInvoice = async (token, input) => (await provider()).analyzeInvoice(token, input);
+export const updateInvoiceStore = async (token, storeId, fields) =>
+  (await provider()).updateInvoiceStore(token, storeId, fields);
 export const listInvoiceLocationChanges = async (token, storeId) =>
   (await provider()).listInvoiceLocationChanges(token, storeId);
 export const registerInvoiceLocation = async (token, storeId, location) =>

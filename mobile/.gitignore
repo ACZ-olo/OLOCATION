@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 *.log
+
+# Modelo de Tesseract que se descarga al correr las pruebas del lector
+*.traineddata

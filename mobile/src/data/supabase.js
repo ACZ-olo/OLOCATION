@@ -54,7 +54,12 @@ async function rpc(name, params) {
   }
   // Un error no previsto puede traer detalles internos de la base: no se le muestran al usuario.
   console.error(`Supabase ${name}:`, error);
-  throw new DataError("UNKNOWN", "Ocurrió un error en el servidor. Intentá de nuevo en unos minutos.");
+  // `cause` guarda el código de PostgREST (p. ej. PGRST202 = la función no existe con esos
+  // parámetros) para que quien llama pueda reaccionar sin mostrarle el detalle al usuario.
+  throw Object.assign(
+    new DataError("UNKNOWN", "Ocurrió un error en el servidor. Intentá de nuevo en unos minutos."),
+    { cause: error.code }
+  );
 }
 
 const toStore = (row) => ({
@@ -80,7 +85,12 @@ const toChange = (row) => ({
   createdAt: row.created_at,
 });
 
-const toInvoiceStore = (row) => ({ ...toStore(row), notes: row.notes, createdAt: row.created_at });
+const toInvoiceStore = (row) => ({
+  ...toStore(row),
+  notes: row.notes,
+  notesLocation: row.notes_location ?? null,
+  createdAt: row.created_at,
+});
 const toInvoiceChange = (row) => ({ ...toChange(row), storeId: row.invoice_store_id });
 
 export async function verifyAccess(password) {
@@ -152,15 +162,76 @@ export async function listInvoiceStores(token) {
   return (await rpc("list_invoice_stores", { p_token: token })).map(toInvoiceStore);
 }
 
-export async function registerInvoiceStore(token, { code, name, address, notes }) {
-  const data = await rpc("register_invoice_store", {
+export async function registerInvoiceStore(token, { code, name, address, notes, notesLocation }) {
+  const params = {
     p_token: token,
     p_code: code,
     p_name: name,
     p_address: address || null,
     p_notes: notes || null,
+  };
+  let data;
+  try {
+    data = await rpc("register_invoice_store", { ...params, p_notes_location: notesLocation || null });
+  } catch (e) {
+    // La base todavía no tiene la migración 20261102110000 (sin p_notes_location): se registra
+    // igual, sin el campo nuevo.
+    if (e.cause !== "PGRST202") throw e;
+    data = await rpc("register_invoice_store", params);
+  }
+  // filled: campos vacíos que se completaron con esta factura (código ya registrado).
+  const filled = (data.filled || []).map((f) => (f === "notes_location" ? "notesLocation" : f));
+  return { store: toInvoiceStore(data.store), created: data.created, filled };
+}
+
+/** Edición del admin: todos los datos menos la coordenada (migración 20261102140000). */
+export async function updateInvoiceStore(token, storeId, { code, name, address, notes, notesLocation }) {
+  const data = await rpc("update_invoice_store", {
+    p_token: token,
+    p_store_id: storeId,
+    p_code: code,
+    p_name: name,
+    p_address: address || null,
+    p_notes: notes || null,
+    p_notes_location: notesLocation || null,
   });
-  return { store: toInvoiceStore(data.store), created: data.created };
+  return { store: toInvoiceStore(data.store) };
+}
+
+const AI_TIMEOUT_MS = 25_000;
+
+/**
+ * Analiza con IA las observaciones de una factura (Edge Function supabase/functions/analyze-invoice).
+ * Devuelve { notesIsAddress, notesLocation }. Lanza DataError si falla (sin internet, función sin
+ * desplegar o sin configurar): quien llama sigue sin la IA.
+ */
+export async function analyzeInvoice(token, { notes, address }) {
+  const call = supabase().functions.invoke("analyze-invoice", { body: { token, notes, address } });
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new DataError("NETWORK", "La IA tardó demasiado en responder.")), AI_TIMEOUT_MS);
+  });
+  let result;
+  try {
+    result = await Promise.race([call, timeout]);
+  } catch (e) {
+    if (e instanceof DataError) throw e;
+    throw new DataError("NETWORK", "No hay conexión con el servidor de IA.");
+  } finally {
+    clearTimeout(timer);
+  }
+  const { data, error } = result;
+  if (!error && data?.ok && data.result) return data.result;
+  // Error de la función: su cuerpo trae { ok: false, error: { code, message } }.
+  let body = data;
+  if (error?.context && typeof error.context.json === "function") {
+    body = await error.context.json().catch(() => null);
+  }
+  const errorCode = body?.error?.code;
+  throw new DataError(
+    errorCode === "UNAUTHORIZED" ? "UNAUTHORIZED" : errorCode === "NOT_CONFIGURED" ? "NOT_CONFIGURED" : "UNKNOWN",
+    body?.error?.message || "No se pudo analizar la factura con IA."
+  );
 }
 
 export async function listInvoiceLocationChanges(token, storeId) {

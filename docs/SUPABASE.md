@@ -48,6 +48,17 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   cambiar una contraseña cierra todas las sesiones de ese rol.
 - `supabase/migrations/20261027150000_delete_stores.sql`: `delete_store` y `delete_invoice_store`
   (solo admin) borran una tienda del registro viejo o nuevo junto con su historial.
+- `supabase/migrations/20261102110000_invoice_notes_location.sql`: campo **Ubicación -
+  Observaciones** (`invoice_stores.notes_location`): la dirección que traen las observaciones,
+  normalizada como la dirección de arriba de la factura, o `Sin dirección en observaciones`
+  (null si no se pudo analizar). `register_invoice_store` recibe `p_notes_location` (opcional: las
+  apps anteriores siguen funcionando), el respaldo agrega `notesLocation` y hay una RPC nueva
+  `check_session(p_token)` → rol, que usa la Edge Function para validar el token.
+- `supabase/migrations/20261102140000_invoice_store_fill_and_edit.sql`: (1) al volver a escanear
+  un código ya registrado, `register_invoice_store` **completa** Observaciones y Ubicación -
+  Observaciones si estaban vacías (vacío < "Sin …" < texto real; nunca pisa un dato que ya tenía)
+  y devuelve `filled` con los campos completados; (2) `update_invoice_store` (solo admin) edita
+  código, nombre, dirección, observaciones y Ubicación - Observaciones. La coordenada no se edita.
   Aplicar las migraciones **en orden** (por nombre de archivo).
 - **Cambiar una contraseña** (SQL Editor). Cierra todas las sesiones de ese rol:
   `update private.app_settings set value = extensions.crypt('<nueva>', extensions.gen_salt('bf')) where key = 'admin_password_hash';`
@@ -61,6 +72,39 @@ prueba y su historial). Probado de punta a punta desde el navegador y desde el A
   historial y que `anon` **no** puede leer las tablas ni las funciones privadas.
 - `mobile/src/data/supabase.js`: el adaptador (usa `@supabase/supabase-js`, ya instalado y que
   solo se descarga si se elige este proveedor). **No se probó contra un proyecto real.**
+
+### Análisis de facturas con IA (Edge Function `analyze-invoice`)
+
+`supabase/functions/analyze-invoice/index.ts` recibe **solo las observaciones** de la factura y la
+dirección de arriba, y le pide a OpenAI (respuesta en JSON con esquema fijo, `store: false` para
+que OpenAI no guarde el contenido) que decida si las observaciones indican una dirección de
+entrega (nunca viene rotulada como "DIRECCION:") y, si la indican, que la normalice con el formato
+de la dirección de arriba (`PROVINCIA, CANTON, DISTRITO SEÑAS`, mayúsculas sin tildes). El
+resultado va al campo **Ubicación - Observaciones**; si no hay dirección, `Sin dirección en
+observaciones`.
+
+La IA **no** lee ni corrige el código, el nombre ni la dirección del cliente: si el lector de la
+app no los lee, se pide otra foto como siempre y no se llama a la IA. La app
+(`mobile/src/lib/invoice-ai.js`) descarta la dirección si trae lugares que no figuran en las
+observaciones ni en la dirección de arriba. Si la función no responde, el escaneo sigue como
+siempre y el campo nuevo queda vacío.
+
+**La API key de OpenAI va solo como secreto de Supabase. Nunca en `mobile/.env` ni en el
+repositorio:** todo lo que está en la app se puede extraer del APK.
+
+Puesta en marcha (una vez):
+
+```bash
+supabase login
+supabase link --project-ref defxbcwtwtokfwhggkcy
+supabase secrets set OPENAI_API_KEY=<tu key> OPENAI_MODEL=<ID de un modelo económico de tu cuenta>
+supabase functions deploy analyze-invoice
+```
+
+(O desde el dashboard: **Edge Functions → Deploy a new function → Via Editor**, pegar el archivo,
+y **Edge Functions → Secrets** para las dos variables.) La función solo atiende a quien tenga un
+token vigente de la app (`check_session`), así que primero hay que aplicar la migración
+`20261102110000`.
 
 ### Seguridad (sin Supabase Auth)
 

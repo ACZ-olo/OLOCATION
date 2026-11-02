@@ -89,6 +89,9 @@ const invoiceModuleMissing = async () => {
 };
 export const listInvoiceStores = invoiceModuleMissing;
 export const registerInvoiceStore = invoiceModuleMissing;
+export const updateInvoiceStore = invoiceModuleMissing;
+// El análisis con IA es una Edge Function de Supabase.
+export const analyzeInvoice = invoiceModuleMissing;
 export const listInvoiceLocationChanges = invoiceModuleMissing;
 export const registerInvoiceLocation = invoiceModuleMissing;
 export const deleteInvoiceLocationChange = invoiceModuleMissing;

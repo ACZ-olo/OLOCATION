@@ -980,6 +980,27 @@ body[data-role="empleado"] .scan-tip {
 }
 .dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
 .dialog-body { min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
+
+/* Formulario de edición de tienda (admin, registro nuevo) dentro del diálogo. */
+.edit-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+.edit-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.edit-field > span { font-weight: 600; }
+.edit-field input,
+.edit-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1.5px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem; /* 16 px: evita el zoom automático del teclado en el teléfono */
+}
+.edit-field textarea { resize: vertical; min-height: 64px; }
+.edit-field input:focus,
+.edit-field textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.edit-field small { color: var(--muted); font-size: 0.8rem; }
 .dialog-body p { margin: 0 0 8px; }
 .dialog-coords {
   padding: 8px 12px;

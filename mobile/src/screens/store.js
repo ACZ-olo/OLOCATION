@@ -1,7 +1,7 @@
 // Detalle de una tienda: coordenada actual, conteo de cambios e historial con fechas.
 // Sirve a los dos módulos (#/tiendas/:id y #/facturas/:id); cada uno con sus propios datos.
 import L from "leaflet";
-import { deleteLocationChange, listLocationChanges } from "../data/index.js";
+import { deleteLocationChange, listLocationChanges, updateInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
@@ -40,6 +40,9 @@ function renderStore(store) {
   // Observaciones de la factura (solo en el registro nuevo).
   $("storeNotesWrap").hidden = !store.notes;
   $("storeNotes").textContent = store.notes || "";
+  // Dirección encontrada en las observaciones (vacío si nunca se analizó con IA).
+  $("storeNotesLocationWrap").hidden = !store.notesLocation;
+  $("storeNotesLocation").textContent = store.notesLocation || "";
   $("storeChangeCount").textContent = store.changeCount;
   $("storeUpdated").textContent = store.locationUpdatedAt ? formatRelative(store.locationUpdatedAt) : "—";
 
@@ -200,6 +203,92 @@ $("goLocate").addEventListener("click", () => {
   if (storeId != null) go(`${MODULES[module].base}/${storeId}/ubicar`);
 });
 
+// ---- Editar (solo admin, solo registro nuevo). La coordenada no se edita: sale del GPS. ----
+
+const EDIT_FIELDS = [
+  { key: "code", label: "Código", max: 50, required: true },
+  { key: "name", label: "Nombre", max: 200, required: true },
+  { key: "address", label: "Dirección", max: 500, multiline: true },
+  { key: "notes", label: "Observaciones", max: 2000, multiline: true, hint: "Si no hay: Sin observaciones" },
+  {
+    key: "notesLocation",
+    label: "Ubicación - Observaciones",
+    max: 500,
+    multiline: true,
+    hint: "Si no hay: Sin dirección en observaciones",
+  },
+];
+let saving = false;
+
+function editForm(values, error) {
+  const fields = EDIT_FIELDS.map(({ key, label, max, multiline, required, hint }) => {
+    const id = `edit-${key}`;
+    const value = escapeHtml(values[key] || "");
+    const attrs = `id="${id}" maxlength="${max}" autocomplete="off"${required ? " required" : ""}`;
+    return (
+      `<label class="edit-field" for="${id}"><span>${label}${required ? " *" : ""}</span>` +
+      (multiline ? `<textarea ${attrs} rows="2">${value}</textarea>` : `<input ${attrs} type="text" value="${value}" />`) +
+      (hint ? `<small>${escapeHtml(hint)}</small>` : "") +
+      `</label>`
+    );
+  }).join("");
+  return (
+    `<div class="edit-form">${fields}</div>` +
+    (error ? `<p class="form-msg error">${escapeHtml(error)}</p>` : "") +
+    `<p class="muted">La coordenada no se edita: se guarda con el GPS en la tienda.</p>`
+  );
+}
+
+const readForm = () =>
+  Object.fromEntries(EDIT_FIELDS.map(({ key }) => [key, ($(`edit-${key}`)?.value || "").trim()]));
+
+$("editStore").addEventListener("click", async () => {
+  const store = findStore(storeId, module);
+  if (!store || module !== "invoice" || saving) return;
+  const original = Object.fromEntries(EDIT_FIELDS.map(({ key }) => [key, (store[key] || "").trim()]));
+  let values = original;
+  let error = "";
+  // Si el servidor rechaza los datos, el formulario se vuelve a abrir con lo escrito y el motivo.
+  for (;;) {
+    const answer = confirmDialog({ title: "Editar tienda", body: editForm(values, error), accept: "Guardar" });
+    $("edit-code")?.focus();
+    if (!(await answer)) return;
+    values = readForm();
+    if (!values.code || !values.name) {
+      error = "El código y el nombre son obligatorios.";
+      continue;
+    }
+    if (EDIT_FIELDS.every(({ key }) => values[key] === original[key])) {
+      toast("No hubo cambios.");
+      return;
+    }
+
+    saving = true;
+    $("editStore").disabled = true;
+    try {
+      const { store: updated } = await updateInvoiceStore(getToken(), store.id, values);
+      updateStore(updated, "invoice");
+      toast("Tienda actualizada.", "ok");
+      if (storeId === store.id && module === "invoice") renderStore(updated);
+      return;
+    } catch (e) {
+      if (e.code === "VALIDATION_ERROR") {
+        error = e.message;
+        continue;
+      }
+      handleDataError(e);
+      if (e.code === "STORE_NOT_FOUND") {
+        removeStore(store.id, "invoice");
+        if (storeId === store.id && module === "invoice") back();
+      }
+      return;
+    } finally {
+      saving = false;
+      $("editStore").disabled = false;
+    }
+  }
+});
+
 function detailScreen(key) {
   return {
     id: "screenStore",
@@ -212,6 +301,7 @@ function detailScreen(key) {
         $("history").innerHTML = "";
         $("storeName").textContent = "";
         $("storeNotesWrap").hidden = true;
+        $("storeNotesLocationWrap").hidden = true;
         $("screenStore").querySelector(".screen-body").scrollTop = 0;
       }
       $("storeTitle").textContent = !isAdmin()
@@ -219,8 +309,9 @@ function detailScreen(key) {
         : key === "invoice"
           ? "Registro nuevo"
           : "Registro viejo";
-      // En el registro viejo ya no se registran ubicaciones.
+      // En el registro viejo ya no se registran ubicaciones ni se editan datos.
       $("goLocate").closest(".action-bar").hidden = key !== "invoice";
+      $("editStore").hidden = key !== "invoice";
       let store = findStore(id, key);
       if (!store) {
         try {

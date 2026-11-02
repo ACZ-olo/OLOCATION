@@ -44,3 +44,10 @@ mover a "Cerradas" con la fecha y el mensaje donde se acordó).
   cédula + PIN, token Bearer, POST de ubicación sin `carrierId`, manejo de 401/429, y pantalla
   **Registros** usando `GET /carriers/{id}/locations` (se actualiza al instante al guardar).
 - **Android:** pendiente de inicio por Kiro en `android/`, directamente sobre v1.3.
+- **2026-11-02 (Kiro):** registro nuevo (Supabase) con campo **Ubicación - Observaciones** y
+  análisis de facturas con IA (Edge Function `analyze-invoice`, OpenAI). Falta que el equipo
+  aplique la migración `20261102110000`, despliegue la función y cargue los secretos. Hilo:
+  `20261102-1117_kiro_ubicacion-observaciones-ia.md`.
+- **2026-11-02 (Kiro):** registro nuevo: al re-escanear se completan observaciones y Ubicación -
+  Observaciones vacías, y el admin puede editar todo menos la coordenada. Falta aplicar la
+  migración `20261102140000`. Hilo: `20261102-1222_kiro_completar-y-editar-registro-nuevo.md`.
