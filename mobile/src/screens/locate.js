@@ -152,6 +152,7 @@ $("saveLocation").addEventListener("click", async () => {
   saving = true;
   const btn = $("saveLocation");
   btn.disabled = true;
+  btn.classList.add("busy");
   btn.lastChild.textContent = " Guardando…";
   try {
     const result = await MODULES[module].registerLocation(getToken(), store.id, p);
@@ -170,6 +171,7 @@ $("saveLocation").addEventListener("click", async () => {
     btn.disabled = false;
   } finally {
     saving = false;
+    btn.classList.remove("busy");
     btn.lastChild.textContent = " Guardar";
   }
 });

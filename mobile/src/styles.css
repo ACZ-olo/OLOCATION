@@ -7,12 +7,54 @@
   --brand-light: #4ab397;      /* verde de botones e íconos del sitio */
   --charcoal: #251e1f;         /* carbón del logo */
 
-  --radius: 16px;
+  /* Espaciado (múltiplos de 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radios: los anidados usan radio exterior = interior + separación. */
+  --radius-xs: 6px;
   --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Ancho máximo del contenido (cambia por pantalla en anchos grandes, ver Responsive). */
+  --content-max: 640px;
+  --rail-w: 88px;
+
   --font-body: Roboto, "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-head: "Open Sans", Roboto, system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Movimiento (escala de transitions-polish). Las distancias, escalas y desenfoques se anulan
+     con prefers-reduced-motion al final del archivo: queda solo el fundido. */
+  --duration-stagger: 40ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-spin: 1s;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+  --distance-base: 8px;
+  --distance-medium: 12px;
+  --distance-toast: 16px;
+  --scale-large: 0.96;
+  --scale-medium: 0.97;
+  --scale-press: 0.96;
+  --scale-press-card: 0.985;
+  --scale-icon: 0.25;
+  --blur-small: 2px;
+  --blur-medium: 3px;
 }
 
 :root,
@@ -45,8 +87,18 @@
   --warn-container: #fff1d6;
   --pending: #735a00;          /* ≥ 4.5:1 sobre --pending-container */
   --pending-container: #fbf0c9;
-  --shadow: 0 1px 2px rgba(37, 30, 31, 0.08), 0 2px 8px rgba(37, 30, 31, 0.06);
-  --shadow-up: 0 -2px 12px rgba(37, 30, 31, 0.1);
+  --on-danger: #ffffff;
+  --inverse-surface: #2f2a2b;  /* aviso (snackbar) */
+  --on-inverse-surface: #f6f2f2;
+  --inverse-primary: #7fd8bd;
+  --inverse-danger: #ffb4ab;
+  --selection: #bfe8db;
+  /* Elevación en capas: borde de contacto + sombra corta + sombra difusa. */
+  --shadow: 0 0 0 1px rgba(37, 30, 31, 0.04), 0 1px 2px rgba(37, 30, 31, 0.06), 0 2px 8px rgba(37, 30, 31, 0.05);
+  --shadow-hover: 0 0 0 1px rgba(37, 30, 31, 0.05), 0 2px 4px rgba(37, 30, 31, 0.07), 0 8px 20px rgba(37, 30, 31, 0.08);
+  --shadow-raised: 0 0 0 1px rgba(37, 30, 31, 0.04), 0 2px 6px rgba(37, 30, 31, 0.08), 0 12px 28px rgba(37, 30, 31, 0.12);
+  --shadow-overlay: 0 0 0 1px rgba(37, 30, 31, 0.05), 0 8px 16px rgba(37, 30, 31, 0.1), 0 24px 56px rgba(37, 30, 31, 0.2);
+  --shadow-up: 0 -1px 0 rgba(37, 30, 31, 0.05), 0 -4px 16px rgba(37, 30, 31, 0.07);
   --scrim: rgba(20, 16, 17, 0.5);
   color-scheme: light;
 }
@@ -81,8 +133,18 @@
   --warn-container: #3a2c12;
   --pending: #f0cf6a;
   --pending-container: #352d12;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
-  --shadow-up: 0 -2px 12px rgba(0, 0, 0, 0.3);
+  --on-danger: #410a06;
+  --inverse-surface: #e4e9eb;
+  --on-inverse-surface: #1b1f22;
+  --inverse-primary: #00694f;
+  --inverse-danger: #a3221b;
+  --selection: #1f5a4a;
+  /* En oscuro la sombra casi no se ve: la elevación la marca un anillo claro de 1 px. */
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.09), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.3);
+  --shadow-overlay: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.55);
+  --shadow-up: 0 -1px 0 rgba(255, 255, 255, 0.06), 0 -4px 16px rgba(0, 0, 0, 0.3);
   --scrim: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
@@ -98,11 +160,30 @@ html, body {
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  caret-color: var(--primary);
 }
 
-h1, h2, h3 { font-family: var(--font-head); }
-button, input { font-family: inherit; }
+h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; }
+p, dd, li { text-wrap: pretty; }
+button, input, textarea { font-family: inherit; }
+::selection { background: var(--selection); color: var(--text); }
 [hidden] { display: none !important; }
+
+/* Solo para lectores de pantalla. */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .ic {
   width: 24px;
@@ -133,7 +214,10 @@ button, input { font-family: inherit; }
   .btn.filled:hover { filter: brightness(1.08); }
   .btn.tonal:hover, .btn.text:hover { filter: brightness(0.97); }
   .icon-btn:hover { background: rgba(127, 127, 127, 0.12); }
-  .store-item:hover { box-shadow: 0 0 0 1px var(--primary), var(--shadow); }
+  .store-item:hover { box-shadow: 0 0 0 1px var(--primary), var(--shadow-hover); }
+  .store-item.match:hover { box-shadow: var(--shadow-raised); }
+  .btn.danger:hover { background: var(--danger-container); }
+  .change-delete:hover { color: var(--danger); }
   .module-tab:hover:not(.on) { color: var(--text); }
   .nav-item:hover:not(.active) { color: var(--text); }
 }
@@ -147,13 +231,26 @@ button, input { font-family: inherit; }
   background: var(--bg);
 }
 
+/* Cambio de pantalla (router.js pone data-nav): al avanzar, la nueva entra desde la derecha;
+   al volver, desde la izquierda; entre pestañas, solo fundido. 8 px, 250 ms. Sin desenfoque:
+   un filter: blur() sobre toda la pantalla (con el mapa) traba los WebView de equipos lentos. */
+.screen.is-entering { animation: screen-in var(--duration-fast) var(--ease-smooth-out) both; }
+.screen.is-entering[data-nav="forward"] { --screen-from: var(--distance-base); }
+.screen.is-entering[data-nav="back"] { --screen-from: calc(var(--distance-base) * -1); }
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--screen-from, 0px));
+  }
+}
+
 .screen-body { flex: 1 1 auto; min-height: 0; }
 .screen-body.scroll {
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 16px 32px;
+  padding: var(--space-4) var(--space-4) var(--space-8);
 }
-.screen-body.scroll > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+.screen-body.scroll > * { max-width: var(--content-max); margin-left: auto; margin-right: auto; }
 
 /* Barra de desplazamiento fina y redondeada (en el teléfono no se ve; en la PC sí). Chrome/Edge
    ignoran ::-webkit-scrollbar si hay scrollbar-width, así que ese va solo para Firefox. */
@@ -164,7 +261,7 @@ button, input { font-family: inherit; }
 .scroll::-webkit-scrollbar-track { background: transparent; }
 .scroll::-webkit-scrollbar-thumb {
   background: var(--scrollbar);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 3px solid transparent;
   background-clip: content-box;
 }
@@ -179,8 +276,9 @@ button, input { font-family: inherit; }
   align-items: center;
   gap: 4px;
   min-height: calc(60px + var(--safe-top));
-  /* En pantallas anchas, alineada con el contenido (máx. 640 px centrado). */
-  padding: var(--safe-top) max(4px, calc((100% - 640px) / 2 - 8px)) 0 max(16px, calc((100% - 640px) / 2));
+  /* En pantallas anchas, alineada con el contenido (--content-max centrado). */
+  padding: var(--safe-top) max(4px, calc((100% - var(--content-max)) / 2 - 8px)) 0
+    max(16px, calc((100% - var(--content-max)) / 2));
   background: var(--bar);
   color: var(--on-bar);
   border-bottom: 1px solid var(--bar-line);
@@ -217,17 +315,38 @@ button, input { font-family: inherit; }
   background: transparent;
   color: inherit;
   cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-smooth-out),
+    transform var(--duration-quick) var(--ease-smooth-out);
 }
-.icon-btn:active { background: rgba(127, 127, 127, 0.18); }
-.icon-btn.small { width: 40px; height: 40px; }
-.icon-btn.spinning .ic { animation: spin 0.9s linear infinite; }
+.icon-btn:active { background: rgba(127, 127, 127, 0.18); transform: scale(var(--scale-press)); }
+.icon-btn.small { width: 44px; height: 44px; } /* área táctil mínima de 44 px */
+.icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.icon-btn.spinning .ic { animation: spin var(--duration-spin) linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Al cambiar de tema, los colores cambian de una vez (lib/theme.js). */
+:root.theme-switching *:not(.theme-toggle .ic) { transition: none !important; }
+
+/* Sol / luna: los dos íconos en la misma celda, se cruzan con fundido, escala y desenfoque. */
+.theme-toggle .ic {
+  grid-area: 1 / 1;
+  transition: opacity var(--duration-fast) var(--ease-in-out),
+    filter var(--duration-fast) var(--ease-in-out),
+    transform var(--duration-fast) var(--ease-in-out);
+}
+:root[data-theme="dark"] .theme-toggle .only-light,
+:root:not([data-theme="dark"]) .theme-toggle .only-dark {
+  display: block;
+  opacity: 0;
+  filter: blur(var(--blur-small));
+  transform: scale(var(--scale-icon));
+}
 
 /* ---- Botones ---- */
 .btn {
   min-height: 52px;
   padding: 0 24px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -237,13 +356,23 @@ button, input { font-family: inherit; }
   gap: 8px;
   cursor: pointer;
   border: none;
-  transition: filter 0.15s, background 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: filter var(--duration-quick) var(--ease-smooth-out),
+    background-color var(--duration-quick) var(--ease-smooth-out),
+    transform var(--duration-quick) var(--ease-smooth-out),
+    opacity var(--duration-quick) var(--ease-smooth-out);
 }
+/* Al presionar, el botón se hunde apenas (0.96): respuesta inmediata al toque. */
+.btn:active:not(:disabled) { transform: scale(var(--scale-press)); }
+.btn.block:active:not(:disabled) { transform: scale(var(--scale-press-card)); } /* ancho completo: menos */
 .btn.filled { background: var(--primary); color: var(--on-primary); }
 .btn.filled:active { filter: brightness(0.9); }
 .btn.tonal { background: var(--primary-container); color: var(--on-primary-container); }
 .btn.tonal:active { filter: brightness(0.95); }
-.btn.tonal.busy .ic { animation: spin 1.2s linear infinite; }
+.btn.tonal.busy .ic { animation: spin var(--duration-spin) linear infinite; }
+/* Acción destructiva confirmada (diálogo "Borrar", "Restaurar"). */
+.btn.filled.destructive { background: var(--danger); color: var(--on-danger); }
 .btn.danger {
   background: var(--danger-muted-bg);
   color: var(--danger-muted);
@@ -251,10 +380,18 @@ button, input { font-family: inherit; }
   font-weight: 700;
 }
 .btn.danger:active { background: var(--danger-container); }
-.top-bar .btn.danger { min-height: 40px; margin-right: 4px; gap: 6px; }
+.top-bar .btn.danger { min-height: 44px; margin-right: 4px; gap: 6px; padding: 0 14px; }
+/* Teléfonos: "Borrar" queda solo con el ícono (el nombre accesible sigue siendo "Borrar") y
+   el título de la barra tiene lugar. */
+@media (max-width: 480px) {
+  .top-bar .btn.danger { width: 44px; padding: 0; border-radius: 50%; }
+  .top-bar .btn.danger .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 .btn.text { background: transparent; color: var(--primary); padding: 0 16px; }
 .btn.text:active { background: var(--primary-container); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.4); }
+/* Ocupado (guardando, midiendo, leyendo): no se puede tocar, pero no se ve "apagado". */
+.btn.busy:disabled { opacity: 0.85; filter: none; cursor: progress; }
 .block { width: 100%; }
 
 /* ---- Campos de texto (outlined, etiqueta flotante) ---- */
@@ -270,7 +407,8 @@ button, input { font-family: inherit; }
   font: inherit;
   font-size: 1.05rem;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--duration-quick) var(--ease-smooth-out),
+    box-shadow var(--duration-quick) var(--ease-smooth-out);
 }
 .field.has-action input { padding-right: 56px; }
 .field label {
@@ -280,9 +418,12 @@ button, input { font-family: inherit; }
   color: var(--muted);
   font-size: 1rem;
   pointer-events: none;
-  transition: top 0.15s, font-size 0.15s, color 0.15s;
+  transition: top var(--duration-quick) var(--ease-smooth-out),
+    font-size var(--duration-quick) var(--ease-smooth-out),
+    color var(--duration-quick) var(--ease-smooth-out);
 }
-.field input:focus { border-color: var(--primary); border-width: 2px; }
+/* Foco: anillo de 1 px por fuera del borde (sin cambiar el grosor, el texto no salta). */
+.field input:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .field input:focus + label,
 .field input:not(:placeholder-shown) + label { top: 7px; font-size: 0.75rem; }
 .field input:focus + label { color: var(--primary); }
@@ -324,11 +465,12 @@ button, input { font-family: inherit; }
   width: 52px;
   height: 32px;
   margin: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   border: 2px solid var(--field-line);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background-color var(--duration-fast) var(--ease-smooth-out),
+    border-color var(--duration-fast) var(--ease-smooth-out);
 }
 .switch::after {
   content: "";
@@ -339,7 +481,9 @@ button, input { font-family: inherit; }
   height: 16px;
   border-radius: 50%;
   background: var(--muted);
-  transition: transform 0.2s, width 0.2s, height 0.2s, top 0.2s, left 0.2s, background 0.2s;
+  transition-property: transform, width, height, top, left, background-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-smooth-out);
 }
 .switch:checked { background: var(--primary); border-color: var(--primary); }
 .switch:checked::after { top: 2px; left: 2px; width: 24px; height: 24px; transform: translateX(20px); background: var(--on-primary); }
@@ -368,7 +512,7 @@ button, input { font-family: inherit; }
 .access-body {
   flex: 1 0 auto;
   background: var(--bg);
-  border-radius: 28px 28px 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: 28px 20px calc(16px + var(--safe-bottom));
   display: flex;
   flex-direction: column;
@@ -423,7 +567,7 @@ body[data-role="empleado"] .scan-hero {
 .scan-hero p { margin: 0; max-width: 340px; color: var(--muted); font-size: 1.05rem; line-height: 1.5; }
 body[data-role="empleado"] .scan-btn {
   min-height: 76px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary-container);
   color: var(--on-primary-container);
   font-size: 1.15rem;
@@ -436,21 +580,22 @@ body[data-role="empleado"] .scan-btn {
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
 }
 .module-tab {
   flex: 1;
-  min-height: 42px;
+  min-height: 44px; /* área táctil mínima */
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background-color var(--duration-quick) var(--ease-smooth-out),
+    color var(--duration-quick) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 }
 .module-tab.on { background: var(--tab-on); color: var(--text); font-weight: 700; box-shadow: var(--shadow); }
 .search {
@@ -461,8 +606,10 @@ body[data-role="empleado"] .scan-btn {
   padding: 0 4px 0 14px;
   background: var(--surface);
   border: 1px solid var(--field-line);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   color: var(--muted);
+  transition: border-color var(--duration-quick) var(--ease-smooth-out),
+    box-shadow var(--duration-quick) var(--ease-smooth-out);
 }
 .search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .search input {
@@ -479,8 +626,8 @@ body[data-role="empleado"] .scan-btn {
 .search input::-webkit-search-cancel-button { display: none; }
 
 /* ---- Escanear factura ---- */
-.scan-btn { display: flex; min-height: 52px; border-radius: 14px; font-size: 1.02rem; box-shadow: var(--shadow); }
-.scan-btn.busy .ic { animation: spin 1.2s linear infinite; }
+.scan-btn { display: flex; min-height: 52px; border-radius: var(--radius-md); font-size: 1.02rem; box-shadow: var(--shadow); }
+.scan-btn.busy .ic { animation: spin var(--duration-spin) linear infinite; }
 /* Consejo para la foto: solo para el transportista. */
 .scan-tip { display: none; }
 body[data-role="empleado"] .scan-tip {
@@ -496,30 +643,58 @@ body[data-role="empleado"] .scan-tip {
 .scan-tip .ic { flex: 0 0 auto; margin-top: 1px; color: var(--primary); }
 .scan-tip strong { color: var(--text); }
 .scan-panel { border: 1.5px solid var(--primary); margin-bottom: 20px; }
+/* El resultado del escaneo y la tienda de la factura entran con fundido, subida corta y
+   desenfoque: es el momento central del flujo del transportista. */
+.scan-panel, .store-item.match { animation: focal-in var(--duration-slow) var(--ease-smooth-out) both; }
+.store-item.match { animation-delay: var(--duration-stagger); }
+@keyframes focal-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--distance-medium)) scale(var(--scale-medium));
+    filter: blur(var(--blur-small));
+  }
+}
 .scan-head { display: flex; align-items: center; gap: 14px; }
 .scan-head-txt { min-width: 0; }
 .scan-head h2 { margin: 0 0 2px; font-size: 1.05rem; font-weight: 700; }
 .scan-head p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+/* Lo leído de la factura: cada dato en su renglón, con la etiqueta arriba (como en la ficha) y
+   el valor a todo el ancho. En dos columnas, "Ubicación - Observaciones" dejaba los valores en
+   una columna angosta y las direcciones quedaban partidas en muchos renglones. */
 .scan-fields {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 14px 0 0;
+  padding: 2px 14px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 .scan-fields[hidden] { display: none; }
-.scan-fields dt { color: var(--muted); }
-.scan-fields dd { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.scan-fields dt {
+  padding-top: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.scan-fields dd {
+  margin: 3px 0 0;
+  padding-bottom: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.scan-fields dd:not(:last-of-type) { border-bottom: 1px solid var(--outline); }
 .scan-registered { margin: 10px 0 0; font-size: 0.9rem; color: var(--muted); }
 .scan-registered:empty { display: none; }
 .scan-registered.ok { color: var(--primary); font-weight: 500; }
 .scan-registered.warn { color: var(--warn); }
 .scan-registered.error { color: var(--danger); }
 .scan-text { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
-.scan-text summary { cursor: pointer; padding: 4px 0; }
+.scan-text summary { cursor: pointer; padding: 12px 0; line-height: 20px; } /* 44 px para el dedo */
 .scan-text pre {
   max-height: 180px;
   overflow: auto;
@@ -536,7 +711,7 @@ body[data-role="empleado"] .scan-tip {
 .store-item .best {
   align-self: flex-start;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--on-primary);
   font-size: 0.72rem;
@@ -552,16 +727,16 @@ body[data-role="empleado"] .scan-tip {
   border: 2px solid var(--primary);
   background: var(--primary-container);
   color: var(--on-primary-container);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-raised);
 }
-.store-item.match:active { filter: brightness(0.96); }
+.store-item.match:active { filter: brightness(0.96); background: var(--primary-container); }
 .match-label {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 12px 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--on-primary);
   font-size: 0.85rem;
@@ -577,12 +752,12 @@ body[data-role="empleado"] .scan-tip {
   gap: 12px;
   min-height: 56px;
   padding: 0 14px 0 8px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--primary);
   color: var(--on-primary);
   font-size: 1.05rem;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.14);
 }
 .match-cta-icon {
   width: 40px;
@@ -590,7 +765,7 @@ body[data-role="empleado"] .scan-tip {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.18);
 }
 .match-cta-txt { flex: 1; }
@@ -625,9 +800,11 @@ body[data-role="empleado"] .scan-tip {
   text-align: left;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color var(--duration-quick) var(--ease-smooth-out),
+    box-shadow var(--duration-quick) var(--ease-smooth-out),
+    transform var(--duration-quick) var(--ease-smooth-out);
 }
-.store-item:active { background: var(--primary-container); }
+.store-item:active { background: var(--primary-container); transform: scale(var(--scale-press-card)); }
 .lead {
   width: 44px;
   height: 44px;
@@ -639,7 +816,8 @@ body[data-role="empleado"] .scan-tip {
   color: var(--on-primary-container);
 }
 .lead.pending { background: var(--pending-container); color: var(--pending); }
-.lead.big { width: 52px; height: 52px; border-radius: 14px; background: var(--brand); color: #fff; }
+/* Fondo --primary (no --brand): el ícono blanco sobre el verde del logo no llegaba a 3:1. */
+.lead.big { width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary); color: var(--on-primary); }
 .store-item .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .store-item .name {
   font-weight: 500;
@@ -668,7 +846,7 @@ body[data-role="empleado"] .scan-tip {
   align-items: center;
   gap: 3px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary-container);
   color: var(--on-primary-container);
   font-size: 0.8rem;
@@ -681,11 +859,82 @@ body[data-role="empleado"] .scan-tip {
 @media (max-width: 360px) {
   .screen-body.scroll { padding-left: 12px; padding-right: 12px; }
   .store-item { gap: 10px; padding: 12px 10px 12px 12px; }
-  .store-item .lead { width: 36px; height: 36px; border-radius: 10px; }
+  .store-item .lead { width: 36px; height: 36px; border-radius: var(--radius-sm); }
   .store-item .coords { font-size: 0.78rem; }
   .badge { padding: 2px 6px; font-size: 0.75rem; }
 }
 .list-more { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 8px 16px 16px; }
+
+/* ---- Estados de lista: vacío, sin resultados, error (lib/ui.js, setState) ---- */
+.state:empty, .state.loading { margin: 0; padding: 0; }
+.state:not(:empty):not(.loading) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  animation: state-in var(--duration-fast) var(--ease-smooth-out) both;
+}
+.state.compact:not(:empty):not(.loading) { padding: var(--space-5) var(--space-4); }
+.state-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--space-1);
+  border-radius: 18px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.state.compact .state-icon { width: 44px; height: 44px; border-radius: var(--radius-md); }
+.state.error .state-icon { background: var(--danger-container); color: var(--danger); }
+.state-title { margin: 0; font-family: var(--font-head); font-weight: 700; font-size: 1.05rem; }
+.state-text { margin: 0; max-width: 36ch; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+.state-action { margin-top: var(--space-3); }
+@keyframes state-in {
+  from { opacity: 0; transform: translateY(var(--distance-base)); }
+}
+
+/* ---- Esqueletos de carga (receta skeleton reveal: pulso y luego fundido con desenfoque) ---- */
+.skel {
+  display: block;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  animation: skel-pulse 1s var(--ease-in-out) infinite alternate;
+}
+@keyframes skel-pulse { to { opacity: 0.5; } }
+.skel-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  margin-bottom: 10px;
+  padding: 12px 12px 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.skel-lead { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 12px; }
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.skel-line { height: 10px; }
+.skel-line.w70 { width: 70%; height: 13px; }
+.skel-line.w50 { width: 50%; }
+.skel-line.w30 { width: 30%; }
+.skel-change .change-body { gap: 8px; padding: 12px 14px; }
+.skel-change .change-num { background: var(--surface-2); }
+/* Filas alternadas con el pulso desfasado: se lee como carga, no como parpadeo. */
+.skel-item:nth-child(even) .skel, .skel-change:nth-child(even) .skel { animation-delay: 200ms; }
+/* Solo fundido: la lista puede tener hasta 150 filas y un blur() por fila es caro en el WebView. */
+.list.reveal > li, .history.reveal > li { animation: reveal-in var(--duration-slow) var(--ease-in-out) both; }
+.list.reveal > li:nth-child(2), .history.reveal > li:nth-child(2) { animation-delay: calc(var(--duration-stagger) * 1); }
+.list.reveal > li:nth-child(3), .history.reveal > li:nth-child(3) { animation-delay: calc(var(--duration-stagger) * 2); }
+.list.reveal > li:nth-child(4) { animation-delay: calc(var(--duration-stagger) * 3); }
+.list.reveal > li:nth-child(5) { animation-delay: calc(var(--duration-stagger) * 4); }
+.list.reveal > li:nth-child(n + 6) { animation-delay: calc(var(--duration-stagger) * 5); }
+@keyframes reveal-in {
+  from { opacity: 0; }
+}
 
 /* ---- Detalle de tienda ---- */
 .card {
@@ -713,7 +962,7 @@ body[data-role="empleado"] .scan-tip {
   display: inline-block;
   padding: 1px 8px;
   margin-right: 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--surface-2);
   color: var(--text);
   font-size: 0.8rem;
@@ -792,7 +1041,7 @@ body[data-role="empleado"] .scan-tip {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.change.latest .change-num { background: var(--brand); color: #fff; }
+.change.latest .change-num { background: var(--primary); color: var(--on-primary); } /* AA: texto chico */
 .change-delete { align-self: center; margin-right: -8px; color: var(--muted); }
 .change-delete:active { background: var(--danger-container); color: var(--danger); }
 .change-body {
@@ -815,7 +1064,7 @@ body[data-role="empleado"] .scan-tip {
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
@@ -863,9 +1112,11 @@ body[data-role="empleado"] .scan-tip {
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
-  transition: background 0.2s;
+  border-radius: var(--radius-pill);
+  transition: background-color var(--duration-fast) var(--ease-smooth-out),
+    transform var(--duration-quick) var(--ease-smooth-out);
 }
+.nav-item:active .nav-pill { transform: scale(var(--scale-press)); }
 .nav-item.active { color: var(--text); }
 .nav-item.active .nav-pill { background: var(--primary-container); color: var(--on-primary-container); }
 
@@ -876,7 +1127,8 @@ body[data-role="empleado"] .scan-tip {
 .action-txt p { margin: 0 0 14px; color: var(--muted); font-size: 0.92rem; }
 .action-txt p strong { color: var(--text); }
 .lead.danger { background: var(--danger-container); color: var(--danger); }
-.warn-inline { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); font-weight: 500; }
+/* En su propio renglón y a todo el ancho (con inline-flex el texto se partía en una columna angosta). */
+.warn-inline { display: flex; align-items: center; gap: 4px; margin-top: var(--space-1); color: var(--danger); font-weight: 500; }
 .dialog-body .warn { color: var(--danger); }
 
 /* ---- Mapa para registrar ---- */
@@ -893,7 +1145,7 @@ body[data-role="empleado"] .scan-tip {
   display: flex;
   gap: 12px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   box-shadow: var(--shadow);
   font-size: 0.8rem;
@@ -913,7 +1165,7 @@ body[data-role="empleado"] .scan-tip {
   margin-top: -20px;
   padding: 20px 16px calc(16px + var(--safe-bottom));
   background: var(--surface);
-  border-radius: 24px 24px 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   box-shadow: var(--shadow-up);
 }
 .sheet::before {
@@ -938,12 +1190,14 @@ body[data-role="empleado"] .scan-tip {
   border-radius: 12px;
   background: var(--surface-2);
   color: var(--muted);
+  transition: background-color var(--duration-fast) var(--ease-smooth-out),
+    color var(--duration-fast) var(--ease-smooth-out);
 }
 .sheet-icon.ok { background: var(--primary-container); color: var(--on-primary-container); }
 .sheet-icon.warn { background: var(--warn-container); color: var(--warn); }
 .sheet-icon.error { background: var(--danger-container); color: var(--danger); }
 .sheet-icon.busy { background: var(--primary-container); color: var(--on-primary-container); }
-.sheet-icon.busy .ic { animation: pulse 1.2s ease-in-out infinite; }
+.sheet-icon.busy .ic { animation: pulse 1.2s var(--ease-in-out) infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
 .sheet-txt { min-width: 0; }
 .sheet-title { margin: 0 0 2px; font-weight: 700; font-family: var(--font-head); }
@@ -962,21 +1216,29 @@ body[data-role="empleado"] .scan-tip {
   padding: 24px;
   background: var(--scrim);
   opacity: 0;
-  transition: opacity 0.15s;
+  /* Cierre más rápido (150 ms) que la apertura (250 ms): ver lib/ui.js. */
+  transition: opacity var(--duration-quick) var(--ease-smooth-out);
 }
-.dialog-scrim.open { opacity: 1; }
+.dialog-scrim:not(.open) { pointer-events: none; } /* mientras sale, ya no recibe toques */
+.dialog-scrim.open { opacity: 1; transition-duration: var(--duration-fast); }
+.dialog-scrim .dialog {
+  transform: scale(var(--scale-large));
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+.dialog-scrim.open .dialog { transform: none; transition-duration: var(--duration-fast); }
 .dialog {
   width: 100%;
   max-width: 400px;
   /* Nunca más alto que la pantalla: el texto se desplaza y los botones quedan visibles. */
+  max-height: calc(100vh - 48px); /* WebView sin dvh (anteriores a Chrome 108) */
   max-height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
   padding: 24px 24px 16px;
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-overlay);
 }
 .dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
 .dialog-body { min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
@@ -990,16 +1252,21 @@ body[data-role="empleado"] .scan-tip {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1.5px solid var(--outline);
+  border: 1.5px solid var(--field-line); /* ≥ 3:1, igual que los demás campos */
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 1rem; /* 16 px: evita el zoom automático del teclado en el teléfono */
+  line-height: 1.4;
+  transition: border-color var(--duration-quick) var(--ease-smooth-out),
+    box-shadow var(--duration-quick) var(--ease-smooth-out);
 }
-.edit-field textarea { resize: vertical; min-height: 64px; }
+/* El cuadro crece con el texto (sin cortar las observaciones largas), hasta un tope. Donde no
+   hay field-sizing (WebView anteriores a Chrome 123) manda el rows que calcula store.js. */
+.edit-field textarea { resize: vertical; min-height: 64px; max-height: 200px; field-sizing: content; }
 .edit-field input:focus,
-.edit-field textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.edit-field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .edit-field small { color: var(--muted); font-size: 0.8rem; }
 .dialog-body p { margin: 0 0 8px; }
 .dialog-coords {
@@ -1020,24 +1287,155 @@ body[data-role="empleado"] .scan-tip {
   bottom: calc(96px + var(--safe-bottom));
   max-width: 560px;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding: 14px 16px;
-  border-radius: 12px;
-  background: #322b2c;
-  color: #fff;
+  border-radius: var(--radius-md);
+  background: var(--inverse-surface);
+  color: var(--on-inverse-surface);
   font-size: 0.95rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  line-height: 1.35;
+  box-shadow: var(--shadow-raised);
+  /* Receta de aviso: sube 16 px con fundido, escala 0.97 y desenfoque; abre en 350 ms y
+     se va en 250 ms. */
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(var(--distance-toast)) scale(var(--scale-medium));
+  filter: blur(var(--blur-small));
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity var(--duration-fast) var(--ease-smooth-out),
+    transform var(--duration-fast) var(--ease-smooth-out),
+    filter var(--duration-fast) var(--ease-smooth-out);
 }
-.toast.show { opacity: 1; transform: none; }
-.toast.ok { border-left: 4px solid var(--brand-light); }
-.toast.error { border-left: 4px solid #ff8a80; }
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
+.toast.show {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition-duration: var(--duration-medium);
 }
+.toast .ic { width: 20px; height: 20px; }
+.toast.ok .ic { color: var(--inverse-primary); }
+.toast.error .ic { color: var(--inverse-danger); }
 
 /* Botón chico (recuadro de factura escaneada). */
 .btn.small { min-height: 44px; padding: 0 14px; font-size: 0.9rem; } /* área táctil de 44 px */
+
+/* =====================================================================================
+   Responsive. Mobile first: lo de arriba es el teléfono. Tablet y escritorio aprovechan
+   el ancho sin estirar el texto (cada pantalla define su --content-max).
+   ===================================================================================== */
+
+/* Tablet en adelante (≥ 900 px): listado y respaldo en dos / tres columnas. */
+@media (min-width: 900px) {
+  body[data-role="admin"] #screenStores,
+  #screenBackup { --content-max: 960px; }
+
+  /* Pestañas, buscador y escanear en una sola fila. */
+  body[data-role="admin"] .list-controls {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  body[data-role="admin"] .list-controls .scan-btn { padding: 0 var(--space-6); }
+
+  .list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .list li { margin: 0; display: flex; }
+  .list li > .store-item, .list li.skel-item { flex: 1; }
+  .list li.skel-item { margin: 0; }
+  /* La tienda de la factura, a lo ancho. Con clase y no con :has(), que los WebView anteriores
+     a Chrome 105 no entienden. */
+  .list li.match-row { grid-column: 1 / -1; }
+
+  /* Respaldo: las tres acciones lado a lado, con el botón al pie de cada tarjeta. */
+  #screenBackup .screen-body.scroll {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-content: start;
+    gap: var(--space-4);
+    padding-left: max(var(--space-4), calc((100% - var(--content-max)) / 2));
+    padding-right: max(var(--space-4), calc((100% - var(--content-max)) / 2));
+  }
+  #screenBackup .screen-body.scroll > * { max-width: none; margin: 0; }
+  #screenBackup .action-card { flex-direction: column; }
+  #screenBackup .action-txt { flex: 1; display: flex; flex-direction: column; }
+  #screenBackup .action-txt p { flex: 1; }
+  #screenBackup .action-txt .btn { align-self: flex-start; }
+  #backupMsg { grid-column: 1 / -1; }
+}
+
+/* Escritorio y tablet horizontal (≥ 1024 px). */
+@media (min-width: 1024px) {
+  /* Ficha de la tienda en dos columnas: datos y mapa | conteo e historial. */
+  #screenStore { --content-max: 1040px; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .detail-side .section-label.with-icon { margin-top: var(--space-5); }
+  .mini-map { height: 260px; }
+  .action-bar > .btn { max-width: 420px; }
+
+  /* Registrar ubicación: el panel flota sobre el mapa, a la izquierda, sin tapar el centro. El mapa
+     ocupa todo el ancho, así que la barra va pegada a la izquierda (no centrada a 640 px). */
+  .screen-locate { --content-max: 100%; }
+  .screen-locate .sheet {
+    position: absolute;
+    left: var(--space-6);
+    bottom: calc(var(--space-6) + var(--safe-bottom));
+    width: 400px;
+    margin: 0;
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-raised);
+  }
+  .screen-locate .sheet::before { display: none; }
+  .screen-locate .sheet > * { max-width: none; }
+  .map-wrap .leaflet-bottom { bottom: 0; }
+
+  /* Navegación lateral (riel) en lugar de la barra inferior. */
+  body[data-role="admin"] #screenStores,
+  #screenBackup { padding-left: var(--rail-w); }
+  body[data-role="admin"] #screenStores .bottom-nav,
+  #screenBackup .bottom-nav {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--rail-w);
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: calc(var(--space-4) + var(--safe-top)) 0 var(--space-4);
+    box-shadow: 1px 0 0 var(--bar-line);
+  }
+  .nav-item { flex: 0 0 auto; min-height: 64px; }
+}
+
+/* =====================================================================================
+   Movimiento reducido: se quita el desplazamiento, la escala y el desenfoque, pero se
+   conservan los fundidos (orientan sin mover nada) y los indicadores de ocupado.
+   ===================================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --distance-base: 0px;
+    --distance-medium: 0px;
+    --distance-toast: 0px;
+    --scale-large: 1;
+    --scale-medium: 1;
+    --scale-press: 1;
+    --scale-press-card: 1;
+    --scale-icon: 1;
+    --blur-small: 0px;
+    --blur-medium: 0px;
+  }
+  .switch, .switch::after, .field label { transition: none; }
+  .skel { animation: none; }
+}

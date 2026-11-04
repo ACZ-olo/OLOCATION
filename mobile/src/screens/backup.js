@@ -13,6 +13,7 @@ const CSV_HEADERS = ["code", "name", "address", "latitude", "longitude", "change
 async function busy(btn, label, task) {
   const original = btn.innerHTML;
   btn.disabled = true;
+  btn.classList.add("busy");
   btn.lastChild.textContent = ` ${label}`;
   setMsg("backupMsg", "");
   try {
@@ -22,6 +23,7 @@ async function busy(btn, label, task) {
     if (message) setMsg("backupMsg", message, "error");
   } finally {
     btn.disabled = false;
+    btn.classList.remove("busy");
     btn.innerHTML = original;
   }
 }
@@ -118,6 +120,7 @@ $("importBackup").addEventListener("click", async (e) => {
       `</p><p class="warn"><strong>Se borran todos los datos actuales</strong> y se reemplazan por los del ` +
       `archivo. No se puede deshacer: si no tenés un respaldo de lo actual, descargalo primero.</p>`,
     accept: "Restaurar",
+    destructive: true,
   });
   if (!ok) return;
   await busy(btn, "Restaurando…", async () => {

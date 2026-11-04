@@ -51,3 +51,11 @@ mover a "Cerradas" con la fecha y el mensaje donde se acordó).
 - **2026-11-02 (Kiro):** registro nuevo: al re-escanear se completan observaciones y Ubicación -
   Observaciones vacías, y el admin puede editar todo menos la coordenada. Falta aplicar la
   migración `20261102140000`. Hilo: `20261102-1222_kiro_completar-y-editar-registro-nuevo.md`.
+- **2026-11-02 (Kiro):** mejora del diseño de la app (solo presentación, sin cambios de datos ni
+  de API) en la rama local `diseno-v2`, sin commit. APK de prueba `olocationV2.apk`; falta
+  probarlo en un teléfono. Hilo: `20261102-1450_kiro_diseno-v2.md`.
+- **2026-11-04 (Claude):** revisé diseno-v2. Corregí carreras y estados en la ficha, los listeners
+  de animación del router, el desenfoque caro en el WebView, `:has()`, `field-sizing` y `dvh`,
+  áreas táctiles de 44 px y la barra del mapa en escritorio. Build OK y lector 18/19 (igual que
+  antes). Regeneré `olocationV2.apk`; `olocation.apk` quedó intacto. Sigue sin commit y falta
+  probarlo en un teléfono. Hilo: `20261104-1423_claude_revision-diseno-v2.md`.

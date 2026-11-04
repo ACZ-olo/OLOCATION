@@ -15,16 +15,45 @@ import { withNotesLocation } from "../lib/invoice-ai.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
 import { PhotoError } from "../lib/photo.js";
-import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
+import { $, confirmDialog, icon, setState, skeletonRows, toast } from "../lib/ui.js";
 import { go } from "../router.js";
 import { MODULES, findStore, loadStores, state, storesOf, updateStore } from "../state.js";
 import { handleDataError, lockApp } from "./common.js";
 
 const MAX_RENDERED = 150; // con miles de tiendas, se muestran las primeras y se pide afinar
-const emptyMessage = () =>
+const emptyState = () =>
   module === "stores"
-    ? "No hay tiendas cargadas todavía en el registro viejo."
-    : "Todavía no hay tiendas registradas. Escaneá una factura para registrar la primera.";
+    ? { icon: "i-store", title: "Sin tiendas", text: "No hay tiendas cargadas todavía en el registro viejo." }
+    : {
+        icon: "i-scan",
+        title: "Sin tiendas registradas",
+        text: "Todavía no hay tiendas registradas. Escaneá una factura para registrar la primera.",
+      };
+
+/** Fila de relleno con la misma forma que una tienda (ver .skel-item en styles.css). */
+const SKELETON_ROW =
+  `<li class="skel-item" aria-hidden="true"><span class="skel skel-lead"></span>` +
+  `<span class="skel-lines"><span class="skel skel-line w70"></span><span class="skel skel-line w50"></span>` +
+  `<span class="skel skel-line w30"></span></span></li>`;
+let showingSkeleton = false;
+
+function showLoading() {
+  $("stores").innerHTML = skeletonRows(6, SKELETON_ROW);
+  showingSkeleton = true;
+  setState("storesMsg", { loading: "Cargando tiendas…" });
+}
+
+/** Al reemplazar el relleno por las tiendas, estas aparecen con un fundido corto. */
+function revealList() {
+  if (!showingSkeleton) return;
+  showingSkeleton = false;
+  const list = $("stores");
+  list.classList.remove("reveal");
+  void list.offsetWidth;
+  list.classList.add("reveal");
+  // Se saca al terminar (400 ms + escalonado): buscar después no vuelve a animar la lista.
+  setTimeout(() => list.classList.remove("reveal"), 700);
+}
 
 let module = "stores";
 let renderedKey = "";
@@ -75,7 +104,7 @@ function storeItem(s, best = false) {
 function matchItem(s, created) {
   const sub = [s.code, s.address].filter(Boolean).map(escapeHtml).join(" · ");
   return (
-    `<li><button class="store-item match" type="button" data-id="${s.id}">` +
+    `<li class="match-row"><button class="store-item match" type="button" data-id="${s.id}">` +
     `<span class="match-label">${icon("i-check", "ic sm")}${created ? "Tienda nueva de la factura" : "Tienda de la factura"}</span>` +
     `<span class="match-main"><span class="lead big">${icon("i-store")}</span>` +
     `<span class="txt"><span class="name">${escapeHtml(s.name)}</span><span class="sub">${sub}</span></span></span>` +
@@ -121,6 +150,7 @@ function render({ force = false } = {}) {
 
   // Sin escaneo no hay "mejor coincidencia": la lista va en su orden normal.
   $("stores").innerHTML = items.slice(0, MAX_RENDERED).map((s) => storeItem(s)).join("");
+  revealList();
   const more = items.length - MAX_RENDERED;
   $("storesMore").hidden = more <= 0;
   $("storesMore").textContent = `Y ${more} más. ${
@@ -128,11 +158,15 @@ function render({ force = false } = {}) {
   } para encontrar la tuya.`;
 
   if (!all.length) {
-    setMsg("storesMsg", emptyMessage());
+    setState("storesMsg", emptyState());
   } else if (!items.length) {
-    setMsg("storesMsg", "Ninguna tienda coincide con la búsqueda.");
+    setState("storesMsg", {
+      icon: "i-search",
+      title: "Sin resultados",
+      text: "Ninguna tienda coincide con la búsqueda.",
+    });
   } else {
-    setMsg("storesMsg", "");
+    setState("storesMsg", null);
   }
 }
 
@@ -171,11 +205,15 @@ function renderScan() {
       ? items.map((s) => matchItem(s, scan.created)).join("")
       : items.map((s, i) => storeItem(s, i === 0 && items.length > 1)).join("");
   $("storesMore").hidden = true;
-  setMsg(
+  showingSkeleton = false;
+  setState(
     "storesMsg",
     items.length
-      ? ""
-      : "Probá escanear de nuevo con buena luz y la factura completa en la foto, o buscá la tienda por nombre."
+      ? null
+      : {
+          icon: "i-search",
+          text: "Probá escanear de nuevo con buena luz y la factura completa en la foto, o buscá la tienda por nombre.",
+        }
   );
 }
 
@@ -360,7 +398,7 @@ $("scanClose").addEventListener("click", closeScan);
 
 async function refresh({ force = false } = {}) {
   const current = module;
-  if (!storesOf(current)) setMsg("storesMsg", "Cargando…");
+  if (!storesOf(current)) showLoading();
   const btn = $("refreshStores");
   btn.classList.add("spinning");
   try {
@@ -371,7 +409,17 @@ async function refresh({ force = false } = {}) {
     const message = handleDataError(e, { silent: true });
     if (message && current === module) {
       if (storesOf(current)) toast(message, "error");
-      else setMsg("storesMsg", message, "error");
+      else {
+        $("stores").innerHTML = "";
+        showingSkeleton = false;
+        setState("storesMsg", {
+          icon: "i-warn",
+          tone: "error",
+          title: "No se pudo cargar el listado",
+          text: message,
+          action: { label: "Reintentar", run: () => refresh() },
+        });
+      }
     }
   } finally {
     btn.classList.remove("spinning");
@@ -426,7 +474,8 @@ function listScreen(key) {
         $("storeSearch").value = "";
         $("stores").innerHTML = "";
         $("storesSummary").textContent = "";
-        setMsg("storesMsg", "");
+        setState("storesMsg", null);
+        showingSkeleton = false;
         $("storesBody").scrollTop = 0;
         renderedKey = "";
       }

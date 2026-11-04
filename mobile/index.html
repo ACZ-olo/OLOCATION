@@ -163,7 +163,8 @@
       <p id="storesSummary" class="section-label"></p>
       <ul id="stores" class="list" aria-label="Tiendas"></ul>
       <p id="storesMore" class="list-more" hidden></p>
-      <p id="storesMsg" class="form-msg" aria-live="polite"></p>
+      <!-- Cargando / vacío / sin resultados / error (lib/ui.js, setState) -->
+      <div id="storesMsg" class="state" aria-live="polite"></div>
     </div>
     <nav class="bottom-nav admin-only" aria-label="Secciones">
       <button class="nav-item active" type="button" aria-current="page" data-tab="/tiendas">
@@ -250,7 +251,7 @@
         <svg class="ic"><use href="#i-edit"/></svg>
       </button>
       <button id="deleteStore" class="btn danger small admin-only" type="button" title="Borrar tienda">
-        <svg class="ic sm"><use href="#i-trash"/></svg> Borrar
+        <svg class="ic sm" aria-hidden="true"><use href="#i-trash"/></svg> <span class="btn-label">Borrar</span>
       </button>
       <button class="icon-btn theme-toggle" type="button" aria-label="Cambiar tema">
         <svg class="ic only-light"><use href="#i-moon"/></svg>
@@ -258,47 +259,55 @@
       </button>
     </header>
     <div class="screen-body scroll">
-      <div class="card store-head">
-        <span class="lead big"><svg class="ic"><use href="#i-store"/></svg></span>
-        <div class="store-head-txt">
-          <h2 id="storeName" class="store-name"></h2>
-          <p class="store-meta"><span id="storeCode" class="code-chip"></span> <span id="storeAddress"></span></p>
+      <!-- En pantallas anchas: datos y mapa a la izquierda, conteo e historial a la derecha. -->
+      <div class="detail-grid">
+        <div class="detail-main">
+          <div class="card store-head">
+            <span class="lead big"><svg class="ic"><use href="#i-store"/></svg></span>
+            <div class="store-head-txt">
+              <h2 id="storeName" class="store-name"></h2>
+              <p class="store-meta"><span id="storeCode" class="code-chip"></span> <span id="storeAddress"></span></p>
+            </div>
+          </div>
+
+          <div id="storeNotesWrap" class="card store-notes" hidden>
+            <h3 class="section-label">Observaciones</h3>
+            <p id="storeNotes"></p>
+          </div>
+
+          <div id="storeNotesLocationWrap" class="card store-notes" hidden>
+            <h3 class="section-label">Ubicación - Observaciones</h3>
+            <p id="storeNotesLocation"></p>
+          </div>
+
+          <div class="card map-card">
+            <div id="storeMap" class="mini-map" aria-label="Ubicación actual de la tienda"></div>
+            <div id="storeNoMap" class="mini-map empty-map" hidden>
+              <svg class="ic"><use href="#i-pin-off"/></svg>
+              <span>Esta tienda todavía no tiene coordenada</span>
+            </div>
+            <p id="storeCoords" class="map-caption"></p>
+          </div>
+        </div>
+
+        <div class="detail-side">
+          <div class="stats">
+            <div class="stat">
+              <span id="storeChangeCount" class="stat-num">0</span>
+              <span class="stat-label">cambios de ubicación</span>
+            </div>
+            <div class="stat">
+              <span id="storeUpdated" class="stat-num small">—</span>
+              <span class="stat-label">último registro</span>
+            </div>
+          </div>
+
+          <h3 class="section-label with-icon"><svg class="ic sm"><use href="#i-history"/></svg> Historial de cambios</h3>
+          <ol id="history" class="history"></ol>
+          <!-- Cargando / sin registros / error (screens/store.js) -->
+          <div id="historyMsg" class="state compact" aria-live="polite"></div>
         </div>
       </div>
-
-      <div id="storeNotesWrap" class="card store-notes" hidden>
-        <h3 class="section-label">Observaciones</h3>
-        <p id="storeNotes"></p>
-      </div>
-
-      <div id="storeNotesLocationWrap" class="card store-notes" hidden>
-        <h3 class="section-label">Ubicación - Observaciones</h3>
-        <p id="storeNotesLocation"></p>
-      </div>
-
-      <div class="card map-card">
-        <div id="storeMap" class="mini-map" aria-label="Ubicación actual de la tienda"></div>
-        <div id="storeNoMap" class="mini-map empty-map" hidden>
-          <svg class="ic"><use href="#i-pin-off"/></svg>
-          <span>Esta tienda todavía no tiene coordenada</span>
-        </div>
-        <p id="storeCoords" class="map-caption"></p>
-      </div>
-
-      <div class="stats">
-        <div class="stat">
-          <span id="storeChangeCount" class="stat-num">0</span>
-          <span class="stat-label">cambios de ubicación</span>
-        </div>
-        <div class="stat">
-          <span id="storeUpdated" class="stat-num small">—</span>
-          <span class="stat-label">último registro</span>
-        </div>
-      </div>
-
-      <h3 class="section-label with-icon"><svg class="ic sm"><use href="#i-history"/></svg> Historial de cambios</h3>
-      <ol id="history" class="history"></ol>
-      <p id="historyMsg" class="form-msg" aria-live="polite"></p>
     </div>
     <div class="action-bar">
       <button id="goLocate" class="btn filled block" type="button">
@@ -308,7 +317,7 @@
   </section>
 
   <!-- =================== Registrar ubicación =================== -->
-  <section id="screenLocate" class="screen" hidden>
+  <section id="screenLocate" class="screen screen-locate" hidden>
     <header class="top-bar">
       <button class="icon-btn nav-back" type="button" aria-label="Volver">
         <svg class="ic"><use href="#i-back"/></svg>

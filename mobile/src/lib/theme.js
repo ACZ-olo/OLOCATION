@@ -32,7 +32,12 @@ function apply(theme) {
 export function toggleTheme() {
   const next = currentTheme() === "dark" ? "light" : "dark";
   safeStorage(localStorage).set(KEY, next);
+  // Todo cambia de color de una vez (sin que cada tarjeta haga su propia transición); solo el
+  // ícono de sol/luna se anima (ver .theme-switching en styles.css).
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
   apply(next);
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-switching")));
 }
 
 export function initTheme() {

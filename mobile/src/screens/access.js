@@ -33,6 +33,7 @@ $("accessForm").addEventListener("submit", async (ev) => {
   }
   const btn = $("accessSubmit");
   btn.disabled = true;
+  btn.classList.add("busy");
   btn.textContent = "Verificando…";
   setMsg("accessMsg", "");
   try {
@@ -46,6 +47,7 @@ $("accessForm").addEventListener("submit", async (ev) => {
     if (e.code === "INVALID_PASSWORD") $("accessPassword").select();
   } finally {
     btn.disabled = false;
+    btn.classList.remove("busy");
     btn.textContent = "Entrar";
   }
 });

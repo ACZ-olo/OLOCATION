@@ -37,13 +37,43 @@ function render() {
   if (redirect && redirect !== path) return go(redirect, { replace: true });
 
   if (current && current.screen !== found.screen) current.screen.leave?.();
+  // Dirección del cambio para la animación de entrada: más profundo = avanzar.
+  const d = depth();
+  const nav = forcedNav || (d > renderedDepth ? "forward" : d < renderedDepth ? "back" : "none");
+  forcedNav = null;
+  renderedDepth = d;
+  const changed = current && current.screen.id !== found.screen.id;
   // Por id y no por objeto: los dos módulos de tiendas usan las mismas pantallas.
   for (const r of routes) {
     const el = document.getElementById(r.screen.id);
     if (el) el.hidden = r.screen.id !== found.screen.id;
   }
+  if (changed) animateIn(document.getElementById(found.screen.id), nav);
   current = found;
   found.screen.enter(found.params);
+}
+
+let renderedDepth = 0;
+let forcedNav = null;
+const withEndListener = new WeakSet();
+
+/** Entrada de la pantalla nueva (styles.css, .screen.is-entering). La primera no se anima. */
+function animateIn(el, nav) {
+  if (!el) return;
+  // Un solo listener por pantalla. animationcancel: si se sale antes de que termine (pantalla
+  // oculta), animationend no llega y la clase quedaba puesta.
+  if (!withEndListener.has(el)) {
+    withEndListener.add(el);
+    const done = (e) => {
+      if (e.target === el) el.classList.remove("is-entering");
+    };
+    el.addEventListener("animationend", done);
+    el.addEventListener("animationcancel", done);
+  }
+  el.classList.remove("is-entering");
+  el.dataset.nav = nav;
+  void el.offsetWidth; // reinicia la animación si se repite la misma pantalla
+  el.classList.add("is-entering");
 }
 
 export function go(path, { replace = false } = {}) {
@@ -59,7 +89,10 @@ export function back() {
     return;
   }
   const parent = current?.screen.parent?.(current.params);
-  if (parent) go(parent, { replace: true });
+  if (parent) {
+    forcedNav = "back"; // misma profundidad, pero es volver
+    go(parent, { replace: true });
+  }
 }
 
 /** true si la pantalla actual es "raíz" (en Android, atrás cierra la app). */

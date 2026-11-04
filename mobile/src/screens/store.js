@@ -5,7 +5,7 @@ import { deleteLocationChange, listLocationChanges, updateInvoiceStore } from ".
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatAccuracy, formatCoords, formatDateTime, formatRelative } from "../lib/format.js";
 import { currentPin, tileLayer } from "../lib/map.js";
-import { $, confirmDialog, icon, setMsg, toast } from "../lib/ui.js";
+import { $, confirmDialog, icon, setState, skeletonRows, toast } from "../lib/ui.js";
 import { back, go } from "../router.js";
 import { MODULES, findStore, loadStores, removeStore, updateStore } from "../state.js";
 import { handleDataError } from "./common.js";
@@ -68,7 +68,7 @@ function sourceChip(change) {
     : `<span class="chip-src src-map">${icon("i-tap", "ic xs")} Elegido en el mapa</span>`;
 }
 
-function renderHistory(items) {
+function renderHistory(items, { reveal = false } = {}) {
   changes = items;
   const total = changes.length;
   $("history").innerHTML = changes
@@ -93,18 +93,48 @@ function renderHistory(items) {
       );
     })
     .join("");
-  setMsg("historyMsg", total ? "" : "Todavía no se registró la ubicación de esta tienda desde la app.");
+  const list = $("history");
+  list.classList.remove("reveal");
+  if (total && reveal) {
+    void list.offsetWidth;
+    list.classList.add("reveal"); // reemplaza al relleno con un fundido corto
+  }
+  setState(
+    "historyMsg",
+    total ? null : { icon: "i-history", text: "Todavía no se registró la ubicación de esta tienda desde la app." }
+  );
 }
+
+/** Relleno con la forma de un registro del historial mientras carga. */
+const HISTORY_SKELETON =
+  `<li class="change skel-change" aria-hidden="true"><span class="skel change-num"></span>` +
+  `<div class="change-body"><span class="skel skel-line w50"></span><span class="skel skel-line w70"></span>` +
+  `<span class="skel skel-line w30"></span></div></li>`;
 
 async function loadHistory(id) {
   const seq = ++requestSeq;
-  setMsg("historyMsg", "Cargando historial…");
+  // Relleno solo si no hay nada a la vista (al recargar tras borrar, queda la lista anterior).
+  const skeleton = !$("history").querySelector(".change:not(.skel-change)");
+  if (skeleton) {
+    $("history").classList.remove("reveal");
+    $("history").innerHTML = skeletonRows(2, HISTORY_SKELETON);
+  }
+  setState("historyMsg", { loading: "Cargando historial…" });
   try {
     const changes = await MODULES[module].listChanges(getToken(), id);
-    if (seq === requestSeq) renderHistory(changes);
+    if (seq === requestSeq) renderHistory(changes, { reveal: skeleton });
   } catch (e) {
     const message = handleDataError(e, { silent: true });
-    if (message && seq === requestSeq) setMsg("historyMsg", message, "error");
+    if (message && seq === requestSeq) {
+      // Se saca el relleno; si ya había registros a la vista (recarga tras borrar), quedan.
+      if (skeleton) $("history").innerHTML = "";
+      setState("historyMsg", {
+        icon: "i-warn",
+        tone: "error",
+        text: message,
+        action: { label: "Reintentar", run: () => loadHistory(id) },
+      });
+    }
   }
 }
 
@@ -130,6 +160,7 @@ async function confirmDelete(change) {
       `<p class="muted">${effect} El conteo de ${escapeHtml(store?.name || "la tienda")} baja a ` +
       `${changes.length - 1}. No se puede deshacer.</p>`,
     accept: "Borrar",
+    destructive: true,
   });
 }
 
@@ -174,6 +205,7 @@ $("deleteStore").addEventListener("click", async () => {
       `${count ? ` junto con su historial (${count} ${count === 1 ? "cambio" : "cambios"} de ubicación)` : ""}. ` +
       `No se puede deshacer.</p>`,
     accept: "Borrar",
+    destructive: true,
   });
   if (!ok || findStore(store.id, module) !== store) return;
 
@@ -220,6 +252,17 @@ const EDIT_FIELDS = [
 ];
 let saving = false;
 
+/**
+ * Renglones iniciales del cuadro según el texto (de 2 a 7), para que las observaciones largas se
+ * vean enteras al abrir. Donde hay field-sizing: content (styles.css) el alto lo da el CSS.
+ */
+function textRows(text) {
+  const lines = String(text || "")
+    .split("\n")
+    .reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 38)), 0);
+  return Math.min(7, Math.max(2, lines));
+}
+
 function editForm(values, error) {
   const fields = EDIT_FIELDS.map(({ key, label, max, multiline, required, hint }) => {
     const id = `edit-${key}`;
@@ -227,7 +270,9 @@ function editForm(values, error) {
     const attrs = `id="${id}" maxlength="${max}" autocomplete="off"${required ? " required" : ""}`;
     return (
       `<label class="edit-field" for="${id}"><span>${label}${required ? " *" : ""}</span>` +
-      (multiline ? `<textarea ${attrs} rows="2">${value}</textarea>` : `<input ${attrs} type="text" value="${value}" />`) +
+      (multiline
+        ? `<textarea ${attrs} rows="${textRows(values[key])}">${value}</textarea>`
+        : `<input ${attrs} type="text" value="${value}" />`) +
       (hint ? `<small>${escapeHtml(hint)}</small>` : "") +
       `</label>`
     );
@@ -250,7 +295,12 @@ $("editStore").addEventListener("click", async () => {
   let error = "";
   // Si el servidor rechaza los datos, el formulario se vuelve a abrir con lo escrito y el motivo.
   for (;;) {
-    const answer = confirmDialog({ title: "Editar tienda", body: editForm(values, error), accept: "Guardar" });
+    const answer = confirmDialog({
+      title: "Editar tienda",
+      body: editForm(values, error),
+      accept: "Guardar",
+      role: "dialog",
+    });
     $("edit-code")?.focus();
     if (!(await answer)) return;
     values = readForm();
@@ -298,7 +348,9 @@ function detailScreen(key) {
       module = key;
       storeId = Number(id);
       if (changed) {
+        requestSeq++; // descarta el historial de la tienda anterior que todavía esté cargando
         $("history").innerHTML = "";
+        setState("historyMsg", null);
         $("storeName").textContent = "";
         $("storeNotesWrap").hidden = true;
         $("storeNotesLocationWrap").hidden = true;
@@ -312,20 +364,24 @@ function detailScreen(key) {
       // En el registro viejo ya no se registran ubicaciones ni se editan datos.
       $("goLocate").closest(".action-bar").hidden = key !== "invoice";
       $("editStore").hidden = key !== "invoice";
+      const isCurrent = () =>
+        storeId === Number(id) && module === key && !$("screenStore").hidden;
       let store = findStore(id, key);
       if (!store) {
         try {
           await loadStores({ module: key });
         } catch (e) {
           const message = handleDataError(e, { silent: true });
-          if (message) setMsg("historyMsg", message, "error");
+          if (message && isCurrent()) setState("historyMsg", { icon: "i-warn", tone: "error", text: message });
           return;
         }
+        // Mientras cargaba se pudo abrir otra tienda (o salir): no pisar lo que está a la vista.
+        if (!isCurrent()) return;
         store = findStore(id, key);
       }
       if (!store) {
         $("storeName").textContent = "Tienda no encontrada";
-        setMsg("historyMsg", "Esta tienda ya no existe en el listado.", "error");
+        setState("historyMsg", { icon: "i-pin-off", tone: "error", text: "Esta tienda ya no existe en el listado." });
         return;
       }
       renderStore(store);
