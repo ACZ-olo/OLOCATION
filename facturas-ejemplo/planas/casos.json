@@ -1,0 +1,251 @@
+[
+  {
+    "file": "01_nuevo_obs_con_direccion.png",
+    "expect": {
+      "code": "050105871",
+      "name": "FERRETERIA EL POCHOTE S.A",
+      "address": "GUANACASTE, NICOYA, NICOYA 150 M OESTE DEL PARQUE CENTRAL, ND",
+      "notes": "ENTREGAR EN NOSARA, 300 M SUR DE LA PLAZA DE DEPORTES",
+      "ok": true
+    }
+  },
+  {
+    "file": "02_nuevo_obs_entregar_en_lugar.png",
+    "expect": {
+      "code": "010915420",
+      "name": "AGROVETERINARIA EL VALLE S.A",
+      "address": "SAN JOSE, PEREZ ZELEDON, SAN ISIDRO DE EL GENERAL 75 M NORTE DE LA CATEDRAL, ND",
+      "notes": "Cargado de FR - OC 61877 ENTREGAR EN PLATANARES",
+      "ok": true
+    }
+  },
+  {
+    "file": "03_nuevo_sin_observaciones.png",
+    "expect": {
+      "code": "030502219",
+      "name": "MATERIALES DE CONSTRUCCION TURRIALBA LTDA",
+      "address": "CARTAGO, TURRIALBA, TURRIALBA BARRIO EL CARMEN 200 M ESTE DEL BANCO POPULAR, ND",
+      "notes": "Sin observaciones",
+      "ok": true
+    }
+  },
+  {
+    "file": "04_nuevo_obs_dos_renglones.png",
+    "expect": {
+      "code": "020117763",
+      "name": "DEPOSITO Y FERRETERIA LA FORTUNA S.A",
+      "address": "ALAJUELA, SAN CARLOS, LA FORTUNA 100 M NORTE DE LA IGLESIA, ND",
+      "notes": "Cargado de FR - OC 62015 ENTREGAR EN EL TANQUE, DEL CEMENTERIO 400 M OESTE, BODEGA AZUL",
+      "ok": true
+    }
+  },
+  {
+    "file": "05_nuevo_obs_sin_direccion_telefono.png",
+    "expect": {
+      "code": "060602140",
+      "name": "FERRETERIA Y MADERAS QUEPOS S.A",
+      "address": "PUNTARENAS, QUEPOS, QUEPOS CONTIGUO A LA TERMINAL DE BUSES, ND",
+      "notes": "LLAMAR AL 8812-4470 ANTES DE ENTREGAR",
+      "ok": true
+    }
+  },
+  {
+    "file": "06_nuevo_obs_con_senas.png",
+    "expect": {
+      "code": "021303398",
+      "name": "ALMACEN AGRICOLA UPALA S.A",
+      "address": "ALAJUELA, UPALA, UPALA 50 M SUR DEL HOSPITAL, ND",
+      "notes": "ENTREGAR EN BIJAGUA, FRENTE AL SUPER LA AMISTAD, PORTON NEGRO",
+      "ok": true
+    }
+  },
+  {
+    "file": "07_nuevo_obs_pago.png",
+    "expect": {
+      "code": "021202657",
+      "name": "CONSTRUCENTRO SARCHI LTDA",
+      "address": "ALAJUELA, SARCHI, SARCHI NORTE 200 M OESTE DE LA CARRETA MONUMENTAL, ND",
+      "notes": "PAGO CONTRA ENTREGA, SOLO EFECTIVO O SINPE",
+      "ok": true
+    }
+  },
+  {
+    "file": "08_nuevo_nombre_con_enie.png",
+    "expect": {
+      "code": "021001845",
+      "name": "FERRETERIA PEÑAS BLANCAS S.A",
+      "address": "ALAJUELA, SAN RAMON, PEÑAS BLANCAS 300 M ESTE DE LA ESCUELA, ND",
+      "notes": "Sin observaciones",
+      "ok": true
+    }
+  },
+  {
+    "file": "09_nuevo_obs_finca_km.png",
+    "expect": {
+      "code": "070103319",
+      "name": "AGROSERVICIOS DEL ATLANTICO S.A",
+      "address": "LIMON, LIMON, RIO BLANCO 100 M NORTE DE LA ESCUELA, ND",
+      "notes": "ENTREGAR EN FINCA LA ESTRELLA, KM 12 CARRETERA A VALLE LA ESTRELLA",
+      "ok": true
+    }
+  },
+  {
+    "file": "10_nuevo_obs_solo_orden.png",
+    "expect": {
+      "code": "020504466",
+      "name": "FERRETERIA ATENAS CENTRO S.A",
+      "address": "ALAJUELA, ATENAS, ATENAS 25 M SUR DEL MERCADO MUNICIPAL, ND",
+      "notes": "Cargado de FR - OC 61530",
+      "ok": true
+    }
+  },
+  {
+    "file": "11_nuevo_obs_dos_renglones_recibe.png",
+    "expect": {
+      "code": "060702915",
+      "name": "MULTISERVICIOS FERRETEROS DEL SUR LTDA",
+      "address": "PUNTARENAS, GOLFITO, GOLFITO DEPOSITO LIBRE LOCAL 14, ND",
+      "notes": "ENTREGAR EN RIO CLARO, 200 M NORTE DE LA BOMBA, RECIBE DOÑA MARIELA, HORARIO DE 8 A 12",
+      "ok": true
+    }
+  },
+  {
+    "file": "12_nuevo_obs_horario.png",
+    "expect": {
+      "code": "020305512",
+      "name": "MATERIALES EL MIRADOR DE GRECIA S.A",
+      "address": "ALAJUELA, GRECIA, SAN ISIDRO 400 M OESTE DEL TEMPLO CATOLICO, ND",
+      "notes": "NO RECIBEN LOS SABADOS",
+      "ok": true
+    }
+  },
+  {
+    "file": "13_nuevo_canas_sin_obs.png",
+    "expect": {
+      "code": "050601287",
+      "name": "FERRETERIA CAÑAS DEL TEMPISQUE S.A",
+      "address": "GUANACASTE, CAÑAS, CAÑAS 100 M ESTE DEL PARQUE, ND",
+      "notes": "Sin observaciones",
+      "ok": true
+    }
+  },
+  {
+    "file": "14_nuevo_obs_casa_porton.png",
+    "expect": {
+      "code": "010403670",
+      "name": "DEPOSITO DE MATERIALES PURISCAL S.A",
+      "address": "SAN JOSE, PURISCAL, SANTIAGO 300 M NORTE DE LA CRUZ ROJA, ND",
+      "notes": "ENTREGAR EN BARBACOAS, CASA ESQUINERA PORTON CAFE",
+      "ok": true
+    }
+  },
+  {
+    "file": "15_nuevo_obs_orden_y_lugar.png",
+    "expect": {
+      "code": "060901134",
+      "name": "AGROINSUMOS PARRITA LTDA",
+      "address": "PUNTARENAS, PARRITA, PARRITA FRENTE A LA PLAZA, ND",
+      "notes": "Cargado de FR - OC 62290 ENTREGAR EN PALO SECO",
+      "ok": true
+    }
+  },
+  {
+    "file": "16_nuevo_muchos_productos.png",
+    "expect": {
+      "code": "050304421",
+      "name": "FERRETERIA SANTA CRUZ GUANACASTE S.A",
+      "address": "GUANACASTE, SANTA CRUZ, SANTA CRUZ 200 M SUR DEL ESTADIO, ND",
+      "notes": "DESCARGAR POR EL PORTON DE ATRAS, SOLO CAMION PEQUEÑO",
+      "ok": true
+    }
+  },
+  {
+    "file": "17_nuevo_heredia_bodega.png",
+    "expect": {
+      "code": "040802231",
+      "name": "FERRETERIA LOS ANGELES DE SAN PABLO S.A",
+      "address": "HEREDIA, SAN PABLO, RINCON DE SABANILLA 100 M OESTE DE LA ESCUELA, ND",
+      "notes": "ENTREGAR EN BODEGA DE BARVA, 50 M SUR DEL CEMENTERIO DE SAN PEDRO",
+      "ok": true
+    }
+  },
+  {
+    "file": "18_nuevo_obs_persona.png",
+    "expect": {
+      "code": "030301588",
+      "name": "MADERAS Y FERRETERIA LA UNION LTDA",
+      "address": "CARTAGO, LA UNION, TRES RIOS 200 M NORTE DE LA IGLESIA, ND",
+      "notes": "ENTREGAR ANTES DE LAS 10 AM, PREGUNTAR POR JORGE",
+      "ok": true
+    }
+  },
+  {
+    "file": "19_nuevo_nombre_largo.png",
+    "expect": {
+      "code": "011802744",
+      "name": "DISTRIBUIDORA HERMANOS QUESADA ROJAS S.A",
+      "address": "SAN JOSE, DESAMPARADOS, SAN MIGUEL CALLE FALLAS 600 M SUR DE LA IGLESIA CATOLICA, ND",
+      "notes": "Cargado de FR - OC 62411 ENTREGAR EN EL ROSARIO DE DESAMPARADOS",
+      "ok": true
+    }
+  },
+  {
+    "file": "20_repetido_turrialba_otra_obs.png",
+    "expect": {
+      "code": "030502219",
+      "name": "MATERIALES DE CONSTRUCCION TURRIALBA LTDA",
+      "address": "CARTAGO, TURRIALBA, TURRIALBA BARRIO EL CARMEN 200 M ESTE DEL BANCO POPULAR, ND",
+      "notes": "ENTREGAR EN SANTA ROSA DE TURRIALBA, 100 M ESTE DEL PUENTE",
+      "ok": true
+    }
+  },
+  {
+    "file": "21_repetido_upala_igual.png",
+    "expect": {
+      "code": "021303398",
+      "name": "ALMACEN AGRICOLA UPALA S.A",
+      "address": "ALAJUELA, UPALA, UPALA 50 M SUR DEL HOSPITAL, ND",
+      "notes": "ENTREGAR EN BIJAGUA, FRENTE AL SUPER LA AMISTAD, PORTON NEGRO",
+      "ok": true
+    }
+  },
+  {
+    "file": "22_error_sin_nombre.png",
+    "expect": {
+      "code": "040105528",
+      "name": "",
+      "address": "HEREDIA, SAN RAFAEL, CONCEPCION 200 M NORTE DEL SALON COMUNAL, ND",
+      "notes": "Cargado de FR - OC 62503",
+      "ok": false,
+      "missing": [
+        "nombre"
+      ]
+    }
+  },
+  {
+    "file": "23_error_sin_direccion.png",
+    "expect": {
+      "code": "040301976",
+      "name": "FERRETERIA SANTO DOMINGO S.A",
+      "address": "",
+      "notes": "Sin observaciones",
+      "ok": false,
+      "missing": [
+        "dirección"
+      ]
+    }
+  },
+  {
+    "file": "24_error_codigo_8_digitos.png",
+    "expect": {
+      "code": "",
+      "name": "FERRETERIA DESAMPARADOS NORTE S.A",
+      "address": "SAN JOSE, DESAMPARADOS, DESAMPARADOS 100 M OESTE DEL MERCADO, ND",
+      "notes": "ENTREGAR EN BODEGA PRINCIPAL",
+      "ok": false,
+      "missing": [
+        "código"
+      ]
+    }
+  }
+]

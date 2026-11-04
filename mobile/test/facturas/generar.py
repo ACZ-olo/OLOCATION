@@ -125,9 +125,9 @@ def draw_invoice(f):
     t((556, 547), "ORDEN DE PEDIDO:", ARIAL_B(17))
     t((735, 549), f["order"], ARIAL(18))
     t((1126, 547), "CONDICIONES DE PAGO:", ARIAL_B(17))
-    t((1352, 549), "45 DIAS", ARIAL(17))
+    t((1352, 549), f.get("terms", "45 DIAS"), ARIAL(17))
     t((1456, 547), "BULTOS:", ARIAL_B(17))
-    t((1548, 549), str(len(f["items"]) // 2 + 1), ARIAL(17))
+    t((1548, 549), str(f.get("bultos", len(f["items"]) // 2 + 1)), ARIAL(17))
 
     # Productos
     d.rectangle((150, 585, 1565, 1540), outline=INK, width=3)

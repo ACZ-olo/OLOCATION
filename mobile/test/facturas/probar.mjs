@@ -1,15 +1,20 @@
 // Prueba el escaneo con las facturas de prueba (generadas con generar.py): cada imagen pasa por
 // Tesseract (el mismo OCR que usa la app en el navegador, ver src/lib/ocr.js) y por parseInvoice,
 // y se compara con lo esperado en casos.json.
-// Uso (desde mobile/):  node test/facturas/probar.mjs [filtro]
+// Uso (desde mobile/):  node test/facturas/probar.mjs [--planas] [filtro]
+//   --planas  usa las facturas planas de facturas-ejemplo/planas (generadas con generar_planas.py)
 import { readFileSync } from "node:fs";
 import { createWorker } from "tesseract.js";
 import { invoiceMissing, parseInvoice } from "../../src/lib/invoice.js";
 import { tesseractLines } from "../../src/lib/ocr-lines.js";
 
+const args = process.argv.slice(2);
+const planas = args.includes("--planas");
 const dir = new URL("./", import.meta.url);
-const filter = process.argv[2] || "";
-const cases = JSON.parse(readFileSync(new URL("casos.json", dir), "utf8")).filter((c) => c.file.includes(filter));
+const casesFile = planas ? new URL("../../../facturas-ejemplo/planas/casos.json", dir) : new URL("casos.json", dir);
+const imgDir = planas ? new URL("../../../facturas-ejemplo/planas/", dir) : new URL("img/", dir);
+const filter = args.find((a) => a !== "--planas") || "";
+const cases = JSON.parse(readFileSync(casesFile, "utf8")).filter((c) => c.file.includes(filter));
 
 /**
  * El código, "ok", "Sin observaciones" y el vacío tienen que ser exactos. En el resto se toleran
@@ -38,7 +43,7 @@ const worker = await createWorker("spa");
 let failed = 0;
 let warned = 0;
 for (const { file, expect } of cases) {
-  const { data } = await worker.recognize(new URL(`img/${file}`, dir).pathname.slice(1), {}, { text: true, blocks: true });
+  const { data } = await worker.recognize(decodeURIComponent(new URL(file, imgDir).pathname.slice(1)), {}, { text: true, blocks: true });
   const got = parseInvoice({ text: data.text || "", lines: tesseractLines(data) }); // igual que scanWeb()
   const missing = invoiceMissing(got);
   got.ok = !missing.length;
