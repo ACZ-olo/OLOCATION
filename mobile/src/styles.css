@@ -1269,6 +1269,7 @@ body[data-role="empleado"] .scan-tip {
 .edit-field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .edit-field small { color: var(--muted); font-size: 0.8rem; }
 .dialog-body p { margin: 0 0 8px; }
+.dialog-body .scan-problems { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .dialog-coords {
   padding: 8px 12px;
   border-radius: var(--radius-sm);

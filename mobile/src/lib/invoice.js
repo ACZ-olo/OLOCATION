@@ -7,8 +7,12 @@
 // Con la posición de cada renglón se busca el valor a la derecha (o debajo) de su etiqueta; si el
 // OCR no da posiciones, se busca en el texto renglón por renglón.
 
+// Títulos de la tabla de productos (en el mismo renglón que su "CÓDIGO").
+const TABLE_HEADER = /descripci[oó]n|cantidad|precio|unidad/i;
+
 const LABELS = {
-  code: /c?[oó0]d[iíl1]g[oó0]\b\s*:?/i, // a veces el OCR se come la "C" ("ODIGO:")
+  // A veces el OCR se come la "C" ("ODIGO:") o lee la G como C ("coDIco:").
+  code: /c?[oó0]d[iíl1][gc][oó0]\b\s*:?/i,
   name: /\bn[oó0]mbre\b\s*:?/i,
   address: /\bdirecc[iíl1][oó0]n\b\s*:?/i,
   notes: /\b[oó0]bservac[iíl1][oó0]nes\b\s*:?/i,
@@ -97,7 +101,14 @@ function fromLayout(lines) {
     if (own) return own;
     // Lo de la derecha, pero no lo del otro lado de la hoja (la fecha, el teléfono…).
     const next = rightOf(lines, label)[0];
-    return next && isValue(next) && next.box.left < label.box.right + width * 0.4 ? cut(next.text) : "";
+    if (!next || !isValue(next) || next.box.left >= label.box.right + width * 0.4) return "";
+    // Si la fila de la etiqueta está vacía, lo de al lado puede ser el valor de la fila de abajo
+    // (CODIGO vacío → el nombre): el valor es de la etiqueta que le queda más cerca.
+    const dist = (l) => Math.abs(midY(l.box) - midY(next.box));
+    const closer = lines.some(
+      (o) => o !== label && o.box.right <= next.box.left && OTHER_LABEL.test(clean(o.text)) && dist(o) < dist(label)
+    );
+    return closer ? "" : cut(next.text);
   };
 
   // Código, nombre y dirección son SOLO los del recuadro del cliente, arriba a la izquierda.
@@ -108,15 +119,27 @@ function fromLayout(lines) {
   const height = Math.max(...lines.map((l) => l.box.bottom)) - top;
   const clientLabel = (re) =>
     labelsOf(re).find((l) => l.box.left < left + width * 0.5 && l.box.top < top + height * 0.5) || null;
-  const codeLabel = clientLabel(LABELS.code);
-  if (codeLabel) fields.code = codeOf(valueOf(codeLabel, LABELS.code));
+  // El título de la columna de productos ("CÓDIGO  DESCRIPCIÓN  CANTIDAD…") no es el del cliente:
+  // si la factura no trae el CODIGO del cliente, ese título no puede tomarse en su lugar.
+  const tableHeader = (l) =>
+    TABLE_HEADER.test(l.text) || rightOf(lines, l).slice(0, 2).some((r) => TABLE_HEADER.test(r.text));
+  const codeLabel =
+    labelsOf(LABELS.code).find(
+      (l) => l.box.left < left + width * 0.5 && l.box.top < top + height * 0.5 && !tableHeader(l)
+    ) || null;
+  if (codeLabel) {
+    fields.codeRaw = valueOf(codeLabel, LABELS.code);
+    fields.code = codeOf(fields.codeRaw);
+  }
 
   const addressLabel = clientLabel(LABELS.address);
   const nameLabel = clientLabel(LABELS.name);
+  fields.labels = { code: !!codeLabel, name: !!nameLabel, address: !!addressLabel };
   if (nameLabel) fields.name = valueOf(nameLabel, LABELS.name);
   if (!fields.name && codeLabel && !nameLabel) {
     // Sin la etiqueta NOMBRE: el renglón que está justo debajo del código (nunca la dirección).
-    const next = below(lines, codeLabel, 2.5, Infinity).find(
+    // Solo en la columna del recuadro del cliente: lo del otro lado de la hoja es la fecha.
+    const next = below(lines, codeLabel, 2.5, codeLabel.box.left + width * 0.4).find(
       (l) => isValue(l) && (!addressLabel || l.box.top < addressLabel.box.top - h(addressLabel.box) * 0.5)
     );
     if (next) fields.name = cut(next.text);
@@ -243,7 +266,7 @@ function legible(text) {
 }
 
 function fromText(text) {
-  const fields = {};
+  const fields = { labels: { code: false, name: false, address: false } };
   const rows = String(text || "").split(/\r?\n/).map(clean).filter(Boolean);
   let codeRow = false;
   let notesRow = false; // de las observaciones para abajo ya no hay datos del cliente
@@ -251,14 +274,20 @@ function fromText(text) {
     if (LABELS.notes.test(row)) notesRow = true;
     if (notesRow && !LABELS.notes.test(row)) return;
     // Solo el primer CODIGO (el del cliente, arriba); los siguientes son de la tabla de productos.
-    if (!codeRow && LABELS.code.test(row)) {
+    if (!codeRow && LABELS.code.test(row) && !TABLE_HEADER.test(row) && !TABLE_HEADER.test(rows[i + 1] || "")) {
       codeRow = true;
-      fields.code = codeOf(afterLabel(row, LABELS.code) || rows[i + 1]);
+      fields.labels.code = true;
+      // El renglón siguiente solo cuenta si parece un número (si no, es el nombre: el código falta).
+      const below = /^[\dOoIlSB][\dOoIlSB .-]{3,}/.test(rows[i + 1] || "") ? rows[i + 1] : "";
+      fields.codeRaw = afterLabel(row, LABELS.code) || below;
+      fields.code = codeOf(fields.codeRaw);
     }
     const next = rows[i + 1] && !OTHER_LABEL.test(rows[i + 1]) ? cut(rows[i + 1]) : "";
+    if (LABELS.name.test(row)) fields.labels.name = true;
     if (!fields.name && LABELS.name.test(row)) {
       fields.name = afterLabel(row, LABELS.name) || next;
     }
+    if (!notesRow && LABELS.address.test(row)) fields.labels.address = true;
     if (!fields.address && !notesRow && LABELS.address.test(row)) {
       fields.address = afterLabel(row, LABELS.address) || next;
     }
@@ -283,9 +312,9 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
   const plain = fromText(text);
   // Con posiciones manda el código de arriba a la izquierda; si el texto corrido da otro, no es
   // confiable y se descarta.
-  const code = usable.length
-    ? layout.code && (!plain.code || plain.code === layout.code) ? layout.code : ""
-    : plain.code || "";
+  const conflict = !!(usable.length && layout.code && plain.code && plain.code !== layout.code);
+  const code = usable.length ? (layout.code && !conflict ? layout.code : "") : plain.code || "";
+  const source = usable.length ? layout : plain;
   const fields = {
     code,
     // En la factura van siempre en mayúsculas: si el OCR lee alguna letra en minúscula, se corrige.
@@ -299,28 +328,135 @@ export function parseInvoice({ text = "", lines = [] } = {}) {
   const place = (fields.notes.match(PLACE) || String(text).match(PLACE) || [])[1];
   fields.place = cut(place);
   fields.text = text;
+  // Para explicar qué salió mal (ver invoiceProblems): qué etiquetas del recuadro del cliente se
+  // vieron, lo que había al lado de CODIGO y si las dos lecturas dieron códigos distintos.
+  const seen = (k) => !!(layout.labels?.[k] || plain.labels?.[k]);
+  fields.read = {
+    text: !!clean(text) || usable.length > 0,
+    labels: { code: seen("code"), name: seen("name"), address: seen("address") },
+    codeRaw: clean(source.codeRaw ?? plain.codeRaw ?? ""),
+    codeConflict: conflict,
+  };
   return fields;
 }
 
 const letters = (s) => (String(s || "").match(/\p{L}/gu) || []).length;
 const digits = (s) => (String(s || "").match(/\p{N}/gu) || []).length;
 
+/** Por qué el valor de CODIGO no es un código: "format" (otra cantidad de números o letras) o "unreadable". */
+function codeIssue(raw) {
+  const [a = "", b = ""] = raw.split(" ");
+  const number = (/^\d+$/.test(b) && numberOf(a + b)) || numberOf(a);
+  if (number) return { reason: "format", digits: number.length };
+  // "02021X215": casi todo números, con alguna letra que no es una confusión del OCR.
+  const fixed = a.replace(/[oO]/g, "0").replace(/[lI|]/g, "1").replace(/[sS]/g, "5").replace(/B/g, "8");
+  if (/^[\p{L}\d.-]+$/u.test(fixed) && digits(fixed) >= 5 && letters(fixed) >= 1 && letters(fixed) <= 2) {
+    return { reason: "format", letters: true };
+  }
+  return { reason: "unreadable" };
+}
+
 /**
- * Campos obligatorios que no se pudieron leer bien, en el orden de la factura:
- * [] si está todo bien, o algunos de "código", "nombre", "dirección".
- * Si falta alguno no se registra nada y se pide otra foto.
+ * Qué salió mal al leer los datos obligatorios, en el orden de la factura. [] si está todo bien.
+ * Cada problema es { field, reason, ... }:
+ *   field "invoice"  reason "noText" (la foto no tiene texto) | "notInvoice" (no aparece el recuadro
+ *                    del cliente: quedó fuera de la foto o no es una factura)
+ *   field "code" | "name" | "address", reason:
+ *     "notFound"    no aparece la etiqueta (CODIGO, NOMBRE, DIRECCION) en la foto
+ *     "empty"       la etiqueta está pero no tiene nada al lado / debajo
+ *     "format"      (código) tiene otra cantidad de números (`digits`) o letras (`letters`)
+ *     "incomplete"  (dirección) se lee, pero no llega a dos palabras
+ *     "unreadable"  hay algo escrito, pero no se entiende (foto borrosa, mal iluminada…)
+ * Si hay alguno no se registra nada y se pide otra foto (ver problemMessage).
  */
-export function invoiceMissing({ code, name = "", address = "" }) {
-  const missing = [];
-  if (!code) missing.push("código"); // 9 números (ver codeOf)
+export function invoiceProblems({ code, name = "", address = "", read } = {}) {
+  // Sin `read` (factura armada a mano) se supone que se vieron todas las etiquetas.
+  const labels = read?.labels || { code: true, name: true, address: true };
+  if (read && !read.text) return [{ field: "invoice", reason: "noText" }];
+  if (read && !labels.code && !labels.name && !labels.address && !code && !name && !address) {
+    return [{ field: "invoice", reason: "notInvoice" }];
+  }
+  const problems = [];
+  if (!code) {
+    // 9 números (ver codeOf)
+    const raw = read?.codeRaw || "";
+    if (!labels.code) problems.push({ field: "code", reason: "notFound" });
+    else if (read?.codeConflict) problems.push({ field: "code", reason: "unreadable" });
+    else if (!raw) problems.push({ field: "code", reason: "empty" });
+    else problems.push({ field: "code", raw, ...codeIssue(raw) });
+  }
   // Un nombre de verdad tiene letras; basura del OCR suele ser casi todo símbolos.
-  if (!(letters(name) >= 3 && letters(name) >= name.replace(/\s/g, "").length / 2)) missing.push("nombre");
+  if (!(letters(name) >= 3 && letters(name) >= name.replace(/\s/g, "").length / 2)) {
+    problems.push({ field: "name", reason: name.trim() ? "unreadable" : labels.name ? "empty" : "notFound" });
+  }
   // Una dirección tiene al menos dos palabras de verdad ("ALAJUELA, SAN CARLOS, …").
   const chars = address.replace(/\s/g, "").length;
   const words = address.split(/[\s,.]+/).filter((w) => letters(w) >= 3);
-  if (!(words.length >= 2 && letters(address) + digits(address) >= chars * 0.7)) missing.push("dirección");
-  return missing;
+  const clear = letters(address) + digits(address) >= chars * 0.7;
+  if (!(words.length >= 2 && clear)) {
+    const reason = !address.trim()
+      ? labels.address ? "empty" : "notFound"
+      : clear && words.length === 1 ? "incomplete" : "unreadable";
+    problems.push({ field: "address", reason, ...(reason === "incomplete" ? { raw: clean(address) } : {}) });
+  }
+  return problems;
 }
 
-/** true si se leyeron bien el código, el nombre y la dirección (ver invoiceMissing). */
-export const invoiceReadOk = (invoice) => invoiceMissing(invoice).length === 0;
+const FIELD_NAME = { code: "código", name: "nombre", address: "dirección" };
+const FIELD_LABEL = { code: "CODIGO", name: "NOMBRE", address: "DIRECCION" };
+
+/**
+ * Mensaje para el transportista: { title, detail, paper }. `paper` es true cuando lo más probable
+ * es que el problema esté en la factura misma (falta el dato o viene mal escrito) y no en la foto.
+ */
+export function problemMessage(p) {
+  const label = FIELD_LABEL[p.field];
+  const what = FIELD_NAME[p.field];
+  switch (`${p.field}/${p.reason}`) {
+    case "invoice/noText":
+      return { title: "No se leyó texto en la foto", detail: "La foto salió sin texto legible: muy oscura, muy borrosa o sin la factura." };
+    case "invoice/notInvoice":
+      return {
+        title: "No se encontró la factura en la foto",
+        detail: "No aparece el recuadro del cliente (CODIGO, NOMBRE y DIRECCION). Puede que haya quedado fuera de la foto o que no sea una factura.",
+      };
+    case "code/format":
+      return {
+        title: "El formato del código está mal",
+        detail: p.letters
+          ? `El código tiene letras (se leyó “${p.raw}”). Tiene que ser de ${CODE_DIGITS} números.`
+          : `El código tiene ${p.digits} números (se leyó “${p.raw}”) y tiene que tener ${CODE_DIGITS}.`,
+        paper: true,
+      };
+    case "code/empty":
+      return { title: "No hay código del cliente", detail: "Al lado de CODIGO no se leyó ningún número.", paper: true };
+    case "name/empty":
+      return { title: "No hay nombre del cliente", detail: "Al lado de NOMBRE no se leyó nada escrito.", paper: true };
+    case "address/empty":
+      return { title: "No hay dirección", detail: "Debajo de DIRECCION no se leyó nada escrito.", paper: true };
+    case "address/incomplete":
+      return {
+        title: "La dirección está incompleta",
+        detail: `Solo se leyó “${p.raw}”. La dirección tiene que traer al menos provincia y cantón.`,
+        paper: true,
+      };
+    case "code/unreadable":
+      return { title: "No se logró leer el código", detail: "Hay algo al lado de CODIGO, pero los números no se distinguen bien." };
+    default:
+      return p.reason === "notFound"
+        ? { title: `No se encontró ${p.field === "address" ? "la" : "el"} ${what}`, detail: `No aparece ${label} en la foto: puede que haya quedado fuera.` }
+        : { title: `No se logró leer ${p.field === "address" ? "la" : "el"} ${what}`, detail: `${p.field === "address" ? "La" : "El"} ${what} salió ilegible en la foto.` };
+  }
+}
+
+/**
+ * Campos obligatorios que no se pudieron leer bien, en el orden de la factura:
+ * [] si está todo bien, o algunos de "código", "nombre", "dirección" (ver invoiceProblems).
+ */
+export function invoiceMissing(invoice) {
+  const problems = invoiceProblems(invoice);
+  return problems[0]?.field === "invoice" ? Object.values(FIELD_NAME) : problems.map((p) => FIELD_NAME[p.field]);
+}
+
+/** true si se leyeron bien el código, el nombre y la dirección (ver invoiceProblems). */
+export const invoiceReadOk = (invoice) => invoiceProblems(invoice).length === 0;

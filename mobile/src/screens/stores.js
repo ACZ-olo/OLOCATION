@@ -10,7 +10,7 @@
 import { analyzeInvoice, registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
-import { invoiceMissing, parseInvoice } from "../lib/invoice.js";
+import { invoiceProblems, parseInvoice, problemMessage } from "../lib/invoice.js";
 import { withNotesLocation } from "../lib/invoice-ai.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
@@ -241,25 +241,34 @@ export function clearScan() {
   scan = null;
 }
 
-/** "el código", "el código y la dirección", "el código, el nombre y la dirección". */
-function missingText(missing) {
-  const items = missing.map((m) => `el ${m}`);
-  return items.length > 1 ? `${items.slice(0, -1).join(", ")} y ${items.at(-1)}` : items[0];
-}
+/** "El formato del código está mal. No hay dirección." (para una línea de texto). */
+const problemsText = (problems) => problems.map((p) => `${problemMessage(p).title}.`).join(" ");
 
 /**
- * La foto no se leyó bien (falta el código, el nombre o la dirección): no se registra nada y se
- * pide otra. Devuelve true si quiere volver a tomar la foto.
+ * La factura no se leyó bien (ver invoiceProblems): no se registra nada y se dice qué salió mal
+ * y qué hacer. Devuelve true si quiere volver a tomar la foto.
  */
-const askRetake = (missing) =>
-  confirmDialog({
-    title: "No se logró leer la factura",
-    body:
-      `<p>No se pudo leer <strong>${missingText(missing)}</strong> de la factura.</p>` +
-      `<p>Tomá la foto de nuevo con buena luz, la factura derecha y sin moverte, y que se vea ` +
-      `bien el recuadro del cliente (código, nombre y dirección).</p>`,
+function askRetake(problems) {
+  const messages = problems.map(problemMessage);
+  const paper = messages.every((m) => m.paper);
+  const single = messages.length === 1;
+  const list = single
+    ? `<p>${escapeHtml(messages[0].detail)}</p>`
+    : `<ul class="scan-problems">${messages
+        .map((m) => `<li><strong>${escapeHtml(m.title)}.</strong> ${escapeHtml(m.detail)}</li>`)
+        .join("")}</ul>`;
+  // Si el dato falta o viene mal escrito en la factura, otra foto no lo arregla.
+  const advice = paper
+    ? `<p>Revisá la factura en papel: si de verdad viene así, no se puede registrar. Si en el papel ` +
+      `está bien, tomá la foto de nuevo con buena luz y sin moverte.</p>`
+    : `<p>Tomá la foto de nuevo con buena luz, la factura derecha y sin moverte, y que se vea ` +
+      `bien el recuadro del cliente (código, nombre y dirección).</p>`;
+  return confirmDialog({
+    title: single ? messages[0].title : paper ? "La factura tiene datos con problemas" : "No se logró leer la factura",
+    body: list + advice,
     accept: "Tomar otra foto",
   });
+}
 
 /** "Se completó con esta factura: Ubicación - Observaciones." */
 const FILLED_LABEL = { notes: "Observaciones", notesLocation: "Ubicación - Observaciones" };
@@ -298,12 +307,9 @@ function showScan(fields) {
 async function scanFromStores(invoice) {
   const matches = matchInvoice(invoice, state.stores);
   let registered;
-  const missing = invoiceMissing(invoice);
-  if (missing.length) {
-    registered = {
-      text: `No se guardó en el registro nuevo: no se pudo leer ${missingText(missing)}. Tomá la foto de nuevo.`,
-      tone: "warn",
-    };
+  const problems = invoiceProblems(invoice);
+  if (problems.length) {
+    registered = { text: `No se guardó en el registro nuevo. ${problemsText(problems)}`, tone: "warn" };
   } else {
     const result = await registerFromInvoice(invoice);
     registered = !result
@@ -331,10 +337,10 @@ async function scanFromStores(invoice) {
  * Devuelve true si hay que volver a tomar la foto.
  */
 async function scanFromInvoice(invoice) {
-  const missing = invoiceMissing(invoice);
-  if (missing.length) {
+  const problems = invoiceProblems(invoice);
+  if (problems.length) {
     if (scan) closeScan(); // que no quede a la vista la tienda del escaneo anterior
-    return askRetake(missing);
+    return askRetake(problems);
   }
   const result = await registerFromInvoice(invoice);
   if (!result) return false;

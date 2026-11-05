@@ -2,6 +2,8 @@
 
 Generadas con `mobile/test/facturas/generar_planas.py` (datos inventados, mismo formato que
 `muestra_plana.png`). Escanearlas en orden: la 20 y la 21 repiten clientes de la 03 y la 06.
+De la 22 en adelante la app no registra nada y muestra un aviso con el título indicado (si hay
+dos problemas, los dos).
 
 | Archivo | Código | Nombre | Observaciones | Qué debe pasar |
 |---|---|---|---|---|
@@ -26,6 +28,20 @@ Generadas con `mobile/test/facturas/generar_planas.py` (datos inventados, mismo 
 | 19_nuevo_nombre_largo.png | 011802744 | DISTRIBUIDORA HERMANOS QUESADA ROJAS S.A | Cargado de FR - OC 62411 ENTREGAR EN EL ROSARIO DE DESAMPARADOS | Cliente nuevo con nombre y dirección largos. |
 | 20_repetido_turrialba_otra_obs.png | 030502219 | MATERIALES DE CONSTRUCCION TURRIALBA LTDA | ENTREGAR EN SANTA ROSA DE TURRIALBA, 100 M ESTE DEL PUENTE | Mismo código que la 03 → 'Este cliente ya estaba registrado' (no crea otro). |
 | 21_repetido_upala_igual.png | 021303398 | ALMACEN AGRICOLA UPALA S.A | ENTREGAR EN BIJAGUA, FRENTE AL SUPER LA AMISTAD, PORTON NEGRO | Mismo cliente y observaciones que la 06 (otra factura) → ya estaba registrado. |
-| 22_error_sin_nombre.png | 040105528 | (vacío) | Cargado de FR - OC 62503 | Aviso: no se pudo leer el nombre. No registra. |
-| 23_error_sin_direccion.png | 040301976 | FERRETERIA SANTO DOMINGO S.A | Sin observaciones | Aviso: no se pudo leer la dirección. No registra. |
-| 24_error_codigo_8_digitos.png | 01070215 | FERRETERIA DESAMPARADOS NORTE S.A | ENTREGAR EN BODEGA PRINCIPAL | Aviso: no se pudo leer el código (tiene 8 números). No registra. |
+| 22_error_sin_nombre.png | 040105528 | (vacío) | Cargado de FR - OC 62503 | Aviso: “No hay nombre del cliente”. No registra. |
+| 23_error_sin_direccion.png | 040301976 | FERRETERIA SANTO DOMINGO S.A | Sin observaciones | Aviso: “No hay dirección”. No registra. |
+| 24_error_codigo_8_digitos.png | 01070215 | FERRETERIA DESAMPARADOS NORTE S.A | ENTREGAR EN BODEGA PRINCIPAL | Aviso: “El formato del código está mal”. No registra. |
+| 25_error_sin_etiqueta_codigo.png | (no aparece) | FERRETERIA EL ROBLE DE ALAJUELA S.A | Cargado de FR - OC 62617 | Aviso: “No se encontró el código”. No registra. (No aparece CODIGO (ni la etiqueta ni el número).) |
+| 26_error_codigo_vacio.png | (vacío) | MATERIALES SAN JUAN DE TIBAS S.A | ENTREGAR EN BODEGA DE LLORENTE | Aviso: “No hay código del cliente”. No registra. (CODIGO sin número.) |
+| 27_error_codigo_10_digitos.png | 0201158743 | FERRETERIA CIUDAD QUESADA S.A | Sin observaciones | Aviso: “El formato del código está mal”. No registra. (Código de 10 números.) |
+| 28_error_codigo_con_letra.png | 0201X0215 | AGROCOMERCIAL LOS CHILES S.A | LLAMAR ANTES DE ENTREGAR | Aviso: “El formato del código está mal”. No registra. (Código con una letra (0201X0215).) |
+| 29_error_codigo_tachado.png | 060403352 | DEPOSITO DE MATERIALES ESPARZA S.A | Cargado de FR - OC 62702 | Aviso: “No se logró leer el código”. No registra. (Código tachado con lapicero.) |
+| 30_error_sin_etiqueta_nombre.png | 030204417 | (no aparece) | ENTREGAR EN OROSI, CONTIGUO A LA IGLESIA | Aviso: “No se encontró el nombre”. No registra. (No aparece NOMBRE (ni la etiqueta ni el nombre).) |
+| 31_error_nombre_tachado.png | 070205538 | DEPOSITO GERMANIA LTDA | Sin observaciones | Aviso: “No se logró leer el nombre”. No registra. (Nombre tachado con lapicero.) |
+| 32_error_sin_etiqueta_direccion.png | 010603781 | FERRETERIA ASERRI SUR S.A | Cargado de FR - OC 62844 | Aviso: “No se encontró la dirección”. No registra. (No aparece DIRECCION (ni la etiqueta ni la dirección).) |
+| 33_error_direccion_una_palabra.png | 020802914 | DEPOSITO AGRICOLA POAS S.A | ENTREGAR EN SAN PEDRO DE POAS | Aviso: “La dirección está incompleta”. No registra. (Dirección de una sola palabra (ALAJUELA).) |
+| 34_error_direccion_tachada.png | 050703165 | FERRETERIA BAGACES S.A | Sin observaciones | Aviso: “No se logró leer la dirección”. No registra. (Dirección tachada con lapicero.) |
+| 35_error_hoja_en_blanco.png | — | — | — | Aviso: “No se leyó texto en la foto”. No registra. (Hoja en blanco.) |
+| 36_error_no_es_factura.png | — | — | — | Aviso: “No se encontró la factura en la foto”. No registra. (Una carta del proveedor (sin recuadro del cliente).) |
+| 37_error_codigo_8_y_sin_direccion.png | 02011587 | FERRETERIA NARANJO CENTRO S.A | Cargado de FR - OC 62903 | Aviso: “El formato del código está mal” · “No hay dirección”. No registra. (Código de 8 números y DIRECCION vacía.) |
+| 38_error_sin_nombre_y_direccion_incompleta.png | 040904486 | (no aparece) | Sin observaciones | Aviso: “No se encontró el nombre” · “La dirección está incompleta”. No registra. (Sin NOMBRE y dirección de una sola palabra (HEREDIA).) |

@@ -65,6 +65,18 @@ def fake_qr(d, x, y, size, seed):
         d.rectangle((X + 2 * m, Y + 2 * m, X + 5 * m - 1, Y + 5 * m - 1), fill=INK)
 
 
+def scribble(d, box, seed, color=(40, 45, 110)):
+    """Tachón de lapicero encima de un texto (zigzag de ida y vuelta que lo tapa casi todo)."""
+    rnd = random.Random(seed)
+    x0, y0, x1, y1 = box
+    for _ in range(4):
+        pts, x = [], x0 - 6
+        while x < x1 + 6:
+            pts.append((x, rnd.choice((y0 - 3, y1 + 3)) + rnd.randint(-3, 3)))
+            x += rnd.randint(4, 9)
+        d.line(pts, fill=color, width=3, joint="curve")
+
+
 def draw_invoice(f):
     """f: datos de la factura (ver SAMPLE). Devuelve la imagen plana."""
     img = Image.new("RGB", (W, H), (250, 250, 248))
@@ -90,14 +102,19 @@ def draw_invoice(f):
     barcode(d, 1235, 212, 1545, 246, f["invoice_no"])
     t((1390, 252), f["invoice_no"], ARIAL(18), anchor="mt")
 
-    # Recuadro del cliente
+    # Recuadro del cliente. Opcionales (para probar los avisos): f["hide"] = campos que no aparecen
+    # en la factura (ni la etiqueta ni el valor); f["scribble"] = campos tachados con lapicero.
     d.rectangle((150, 315, 1560, 485), outline=INK, width=3)
-    t((158, 325), "CODIGO:", ARIAL_B(19))
-    t((300, 327), f["code"], ARIAL(19))
-    t((158, 352), "NOMBRE:", ARIAL_B(19))
-    t((300, 354), f["name"], ARIAL(19))
-    t((158, 380), "DIRECCION:", ARIAL_B(19))
-    t((158, 438), f["address"], ARIAL(19))
+    hide, scribbled = set(f.get("hide", ())), set(f.get("scribble", ()))
+    for field, label_xy, label, value_xy in [("code", (158, 325), "CODIGO:", (300, 327)),
+                                             ("name", (158, 352), "NOMBRE:", (300, 354)),
+                                             ("address", (158, 380), "DIRECCION:", (158, 438))]:
+        if field in hide:
+            continue
+        t(label_xy, label, ARIAL_B(19))
+        t(value_xy, f[field], ARIAL(19))
+        if field in scribbled and f[field]:
+            scribble(d, d.textbbox(value_xy, f[field], font=ARIAL(19)), f["invoice_no"] + field)
     t((830, 340), "TRAMITAR CONTRA ENTREGA", ARIAL(18))
     t((790, 413), "CONTRIBUYENTE:", ARIAL_B(19))
     t((1040, 415), f["taxid"], ARIAL(19))

@@ -5,7 +5,7 @@
 //   --planas  usa las facturas planas de facturas-ejemplo/planas (generadas con generar_planas.py)
 import { readFileSync } from "node:fs";
 import { createWorker } from "tesseract.js";
-import { invoiceMissing, parseInvoice } from "../../src/lib/invoice.js";
+import { invoiceMissing, invoiceProblems, parseInvoice, problemMessage } from "../../src/lib/invoice.js";
 import { tesseractLines } from "../../src/lib/ocr-lines.js";
 
 const args = process.argv.slice(2);
@@ -45,6 +45,9 @@ let warned = 0;
 for (const { file, expect } of cases) {
   const { data } = await worker.recognize(decodeURIComponent(new URL(file, imgDir).pathname.slice(1)), {}, { text: true, blocks: true });
   const got = parseInvoice({ text: data.text || "", lines: tesseractLines(data) }); // igual que scanWeb()
+  // Antes de vaciar los campos faltantes (abajo): el motivo depende de lo que se leyó.
+  const reasons = invoiceProblems(got);
+  const reasonKeys = reasons.map((p) => `${p.field}/${p.reason}`);
   const missing = invoiceMissing(got);
   got.ok = !missing.length;
   // Un campo que el mensaje da por no leído no se registra: lo que haya quedado ahí no cuenta.
@@ -65,9 +68,21 @@ for (const { file, expect } of cases) {
       });
     }
   }
-  // El mensaje tiene que nombrar lo que de verdad no se pudo leer.
+  // El mensaje tiene que nombrar lo que de verdad no se pudo leer y con el motivo correcto (ver
+  // invoiceProblems / problemMessage). Que avise de algo más es seguro (otro dato que el OCR no
+  // leyó: se pide otra foto); que falte un aviso o diga otro motivo, no.
+  const extraOnly = (want, got) => want.every((w) => got.includes(w));
   if (expect.missing && expect.missing.join() !== missing.join()) {
-    problems.push({ unread: false, text: `el mensaje dice que falta [${missing}], se esperaba [${expect.missing}]` });
+    problems.push({
+      unread: extraOnly(expect.missing, missing),
+      text: `el mensaje dice que falta [${missing}], se esperaba [${expect.missing}]`,
+    });
+  }
+  if (expect.problems && expect.problems.join() !== reasonKeys.join()) {
+    problems.push({
+      unread: expect.problems.length > 0 && extraOnly(expect.problems, reasonKeys),
+      text: `el motivo es [${reasonKeys}], se esperaba [${expect.problems}]`,
+    });
   }
   // Lo más importante: si la factura se da por bien leída, el código tiene que ser el correcto.
   const realCode = [expect.code].flat().find(Boolean);
@@ -81,6 +96,10 @@ for (const { file, expect } of cases) {
   console.log(`       código ${JSON.stringify(got.code)} · cliente ${JSON.stringify(got.name)}`);
   console.log(`       observaciones ${JSON.stringify(got.notes)}`);
   if (missing.length) console.log(`       mensaje: no se pudo leer ${missing.join(", ")}`);
+  for (const p of reasons) {
+    const extra = p.raw ? ` (se leyó ${JSON.stringify(p.raw)})` : "";
+    console.log(`       aviso: ${problemMessage(p).title} [${p.field}/${p.reason}]${extra}`);
+  }
   for (const p of problems) console.log(`       ${p.unread ? "·" : "✗"} ${p.text}`);
 }
 await worker.terminate();

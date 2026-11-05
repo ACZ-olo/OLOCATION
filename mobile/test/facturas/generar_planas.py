@@ -2,7 +2,8 @@
 
 Cada factura tiene datos distintos: cliente, número, clave, fecha, productos, zona, ruta, etc.
 Incluye clientes nuevos, clientes repetidos (para ver "ya estaba registrado"), observaciones con y
-sin dirección, sin observaciones y facturas con un campo obligatorio mal (para ver el aviso).
+sin dirección, sin observaciones y facturas con un campo obligatorio mal (para ver el aviso: una
+por cada motivo de invoiceProblems, más una hoja en blanco y una carta que no es factura).
 Los datos son inventados. Uso (desde mobile/):  python test/facturas/generar_planas.py
 Salida: ../facturas-ejemplo/planas/*.png y LEEME.md con lo que se espera de cada una.
 """
@@ -13,8 +14,8 @@ from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from generar import ARIAL, draw_invoice  # noqa: E402
-from PIL import ImageDraw  # noqa: E402
+from generar import ARIAL, H, INK, TIMES, TIMES_B, W, draw_invoice, logo  # noqa: E402
+from PIL import Image, ImageDraw  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[3] / "facturas-ejemplo" / "planas"
 
@@ -151,19 +152,92 @@ CASES = [
          address="ALAJUELA, UPALA, UPALA 50 M SUR DEL HOSPITAL, ND",
          notes=["ENTREGAR EN BIJAGUA, FRENTE AL SUPER LA AMISTAD, PORTON NEGRO"],
          expect="Mismo cliente y observaciones que la 06 (otra factura) → ya estaba registrado."),
-    # Campo obligatorio mal: no registra nada y pide otra foto diciendo qué falta.
+    # Campo obligatorio mal: no registra nada y pide otra foto diciendo qué salió mal.
+    # problems: lo que tiene que dar invoiceProblems ("campo/motivo", en su orden); "Qué debe pasar"
+    # en el LEEME es el título del aviso (ver problemMessage en src/lib/invoice.js).
     dict(id="22_error_sin_nombre", code="040105528", name="",
          address="HEREDIA, SAN RAFAEL, CONCEPCION 200 M NORTE DEL SALON COMUNAL, ND",
-         notes=["Cargado de FR - OC 62503"],
-         expect="Aviso: no se pudo leer el nombre. No registra."),
+         notes=["Cargado de FR - OC 62503"], problems=["name/empty"]),
     dict(id="23_error_sin_direccion", code="040301976", name="FERRETERIA SANTO DOMINGO S.A", address="",
-         notes=[],
-         expect="Aviso: no se pudo leer la dirección. No registra."),
+         notes=[], problems=["address/empty"]),
     dict(id="24_error_codigo_8_digitos", code="01070215", name="FERRETERIA DESAMPARADOS NORTE S.A",
          address="SAN JOSE, DESAMPARADOS, DESAMPARADOS 100 M OESTE DEL MERCADO, ND",
-         notes=["ENTREGAR EN BODEGA PRINCIPAL"],
-         expect="Aviso: no se pudo leer el código (tiene 8 números). No registra."),
+         notes=["ENTREGAR EN BODEGA PRINCIPAL"], problems=["code/format"]),
+    # Código
+    dict(id="25_error_sin_etiqueta_codigo", code="020411873", name="FERRETERIA EL ROBLE DE ALAJUELA S.A",
+         address="ALAJUELA, ALAJUELA, EL ROBLE 300 M SUR DE LA ESCUELA, ND", hide=["code"],
+         notes=["Cargado de FR - OC 62617"], problems=["code/notFound"],
+         expect="No aparece CODIGO (ni la etiqueta ni el número)."),
+    dict(id="26_error_codigo_vacio", code="", name="MATERIALES SAN JUAN DE TIBAS S.A",
+         address="SAN JOSE, TIBAS, SAN JUAN 150 M NORTE DEL ESTADIO, ND",
+         notes=["ENTREGAR EN BODEGA DE LLORENTE"], problems=["code/empty"],
+         expect="CODIGO sin número."),
+    dict(id="27_error_codigo_10_digitos", code="0201158743", name="FERRETERIA CIUDAD QUESADA S.A",
+         address="ALAJUELA, SAN CARLOS, CIUDAD QUESADA 100 M ESTE DEL PARQUE, ND",
+         notes=[], problems=["code/format"],
+         expect="Código de 10 números."),
+    # (con "A" el OCR la lee como "4" y da un código válido: se usa una letra que no se confunde)
+    dict(id="28_error_codigo_con_letra", code="0201X0215", name="AGROCOMERCIAL LOS CHILES S.A",
+         address="ALAJUELA, LOS CHILES, LOS CHILES FRENTE AL MUELLE, ND",
+         notes=["LLAMAR ANTES DE ENTREGAR"], problems=["code/format"],
+         expect="Código con una letra (0201X0215)."),
+    dict(id="29_error_codigo_tachado", code="060403352", name="DEPOSITO DE MATERIALES ESPARZA S.A",
+         address="PUNTARENAS, ESPARZA, ESPIRITU SANTO 200 M OESTE DEL COLEGIO, ND", scribble=["code"],
+         notes=["Cargado de FR - OC 62702"], problems=["code/unreadable"],
+         expect="Código tachado con lapicero."),
+    # Nombre
+    dict(id="30_error_sin_etiqueta_nombre", code="030204417", name="FERRETERIA PARAISO CENTRO S.A",
+         address="CARTAGO, PARAISO, PARAISO 75 M SUR DEL PARQUE, ND", hide=["name"],
+         notes=["ENTREGAR EN OROSI, CONTIGUO A LA IGLESIA"], problems=["name/notFound"],
+         expect="No aparece NOMBRE (ni la etiqueta ni el nombre)."),
+    dict(id="31_error_nombre_tachado", code="070205538", name="DEPOSITO GERMANIA LTDA",
+         address="LIMON, SIQUIRRES, SIQUIRRES 100 M NORTE DE LA ESTACION, ND", scribble=["name"],
+         notes=[], problems=["name/unreadable"],
+         expect="Nombre tachado con lapicero."),
+    # Dirección
+    dict(id="32_error_sin_etiqueta_direccion", code="010603781", name="FERRETERIA ASERRI SUR S.A",
+         address="SAN JOSE, ASERRI, ASERRI 200 M SUR DE LA PIEDRA DE ASERRI, ND", hide=["address"],
+         notes=["Cargado de FR - OC 62844"], problems=["address/notFound"],
+         expect="No aparece DIRECCION (ni la etiqueta ni la dirección)."),
+    dict(id="33_error_direccion_una_palabra", code="020802914", name="DEPOSITO AGRICOLA POAS S.A",
+         address="ALAJUELA", notes=["ENTREGAR EN SAN PEDRO DE POAS"], problems=["address/incomplete"],
+         expect="Dirección de una sola palabra (ALAJUELA)."),
+    dict(id="34_error_direccion_tachada", code="050703165", name="FERRETERIA BAGACES S.A",
+         address="GUANACASTE, BAGACES, BAGACES CENTRO FRENTE AL PARQUE, ND", scribble=["address"],
+         notes=[], problems=["address/unreadable"],
+         expect="Dirección tachada con lapicero."),
+    # Foto que no es de la factura
+    dict(id="35_error_hoja_en_blanco", kind="blank", problems=["invoice/noText"],
+         expect="Hoja en blanco."),
+    dict(id="36_error_no_es_factura", kind="letter", problems=["invoice/notInvoice"],
+         expect="Una carta del proveedor (sin recuadro del cliente)."),
+    # Dos problemas a la vez
+    dict(id="37_error_codigo_8_y_sin_direccion", code="02011587", name="FERRETERIA NARANJO CENTRO S.A",
+         address="", notes=["Cargado de FR - OC 62903"], problems=["code/format", "address/empty"],
+         expect="Código de 8 números y DIRECCION vacía."),
+    dict(id="38_error_sin_nombre_y_direccion_incompleta", code="040904486", name="",
+         address="HEREDIA", hide=["name"], notes=[], problems=["name/notFound", "address/incomplete"],
+         expect="Sin NOMBRE y dirección de una sola palabra (HEREDIA)."),
 ]
+
+# Título del aviso de cada problema (igual que problemMessage en src/lib/invoice.js).
+FIELD_NAME = {"code": "el código", "name": "el nombre", "address": "la dirección"}
+TITLES = {
+    "invoice/noText": "No se leyó texto en la foto",
+    "invoice/notInvoice": "No se encontró la factura en la foto",
+    "code/format": "El formato del código está mal",
+    "code/empty": "No hay código del cliente",
+    "name/empty": "No hay nombre del cliente",
+    "address/empty": "No hay dirección",
+    "address/incomplete": "La dirección está incompleta",
+}
+
+
+def title(problem):
+    field, reason = problem.split("/")
+    if problem in TITLES:
+        return TITLES[problem]
+    return f"No se encontró {FIELD_NAME[field]}" if reason == "notFound" else f"No se logró leer {FIELD_NAME[field]}"
 
 ZONES = ["Z101", "Z118", "Z204", "Z215", "Z307", "Z322", "Z410", "Z503", "Z516", "Z602", "Z611", "Z705"]
 TERM_DAYS = {"45 DIAS": 45, "30 DIAS": 30, "CONTADO": 0}
@@ -176,7 +250,44 @@ def money_ok(img, text, x, limit):
         print(f"  ! texto largo ({int(x + w)} > {limit}): {text}")
 
 
+LETTER = [
+    "San José, 3 de noviembre de 2026",
+    "",
+    "Estimados clientes:",
+    "",
+    "Por este medio les informamos que durante la temporada de fin de año nuestro centro de",
+    "distribución atenderá en horario especial, de lunes a viernes de 7 a.m. a 3 p.m. Los pedidos",
+    "recibidos después del 18 de diciembre se despacharán a partir del 5 de enero de 2027.",
+    "",
+    "Les recordamos que los pagos pueden realizarse por transferencia a cualquiera de nuestras",
+    "cuentas bancarias o por SINPE Móvil, enviando el comprobante al correo de cobros.",
+    "",
+    "Agradecemos su confianza y les deseamos felices fiestas.",
+    "",
+    "Atentamente,",
+    "",
+    "Departamento de Crédito y Cobro",
+]
+
+
+def draw_letter():
+    """Una carta del proveedor: tiene texto, pero no es una factura (no tiene recuadro del cliente)."""
+    img = Image.new("RGB", (W, H), (250, 250, 248))
+    d = ImageDraw.Draw(img)
+    logo(d, 225, 165, 1.0, (45, 45, 45))
+    d.text((780, 150), "CONSORCIO FERRETERO DE SAN JOSE", font=TIMES_B(30), fill=INK, anchor="mt")
+    d.text((780, 192), "Pozos de Santa Ana, San José, Costa Rica · Teléfono: 2205-2525", font=TIMES(18),
+           fill=INK, anchor="mt")
+    for i, line in enumerate(LETTER):
+        d.text((180, 420 + i * 44), line, font=TIMES(28), fill=INK)
+    return img
+
+
 def build(case, i):
+    if case.get("kind") == "blank":  # hoja en blanco (la foto no agarró la factura)
+        return Image.new("RGB", (W, H), (250, 250, 248)), None
+    if case.get("kind") == "letter":
+        return draw_letter(), None
     rnd = random.Random(500 + i)
     day = date(2026, 10, 1) + timedelta(days=rnd.randint(0, 33))
     terms = case.get("terms", "45 DIAS")
@@ -198,6 +309,7 @@ def build(case, i):
         zone=zone, route=str(rnd.randint(1, 48)), agent=str(rnd.randint(101, 640)),
         order=f"PEDFR{zone[1:]}{rnd.randint(0, 999999):06d}",
         items=items, notes=case["notes"], key=key, terms=terms,
+        hide=case.get("hide", ()), scribble=case.get("scribble", ()),
     )
     img = draw_invoice(data)
     money_ok(img, case["name"], 300, 825)
@@ -212,20 +324,36 @@ def main():
         print(case["id"])
         img, data = build(case, i)
         img.save(OUT / f"{case['id']}.png", optimize=True)
-        notes = " ".join(case["notes"]) or "Sin observaciones"
-        code = case["code"] if len(case["code"]) == 9 else ""
-        missing = [m for m, v in (("código", code), ("nombre", case["name"]), ("dirección", case["address"]))
-                   if not v]
-        expect = dict(code=code, name=case["name"], address=case["address"], notes=notes, ok=not missing)
+        problems = case.get("problems", [])
+        # Los campos con problemas no se registran (quedan vacíos); si la foto no es de la
+        # factura, invoiceMissing da los tres.
+        bad = {p.split("/")[0] for p in problems}
+        if "invoice" in bad:
+            bad = {"code", "name", "address"}
+        fields = [("code", "código"), ("name", "nombre"), ("address", "dirección")]
+        kind = case.get("kind")
+        notes = "" if kind else " ".join(case["notes"]) or "Sin observaciones"
+        expect = {f: "" if f in bad else case[f] for f, _ in fields}
+        expect.update(notes=notes, ok=not problems)
+        missing = [m for f, m in fields if f in bad]
         if missing:
             expect["missing"] = missing
+        expect["problems"] = problems
         cases.append(dict(file=f"{case['id']}.png", expect=expect))
-        rows.append(f"| {case['id']}.png | {case['code'] or '—'} | {case['name'] or '(vacío)'} | "
-                    f"{notes} | {case['expect']} |")
+        what = case.get("expect", "")
+        if problems:
+            what = ("Aviso: " + " · ".join(f"“{title(p)}”" for p in problems) + ". No registra."
+                    + (f" ({what})" if what else ""))
+        shown = lambda f, empty: "—" if kind else ("(no aparece)" if f in case.get("hide", ()) else
+                                                   case[f] or empty)
+        rows.append(f"| {case['id']}.png | {shown('code', '(vacío)')} | {shown('name', '(vacío)')} | "
+                    f"{notes or '—'} | {what} |")
     (OUT / "LEEME.md").write_text(
         "# Facturas planas de prueba\n\n"
         "Generadas con `mobile/test/facturas/generar_planas.py` (datos inventados, mismo formato que\n"
-        "`muestra_plana.png`). Escanearlas en orden: la 20 y la 21 repiten clientes de la 03 y la 06.\n\n"
+        "`muestra_plana.png`). Escanearlas en orden: la 20 y la 21 repiten clientes de la 03 y la 06.\n"
+        "De la 22 en adelante la app no registra nada y muestra un aviso con el título indicado (si hay\n"
+        "dos problemas, los dos).\n\n"
         "| Archivo | Código | Nombre | Observaciones | Qué debe pasar |\n|---|---|---|---|---|\n"
         + "\n".join(rows) + "\n",
         encoding="utf-8",
