@@ -48,31 +48,6 @@ La lógica está en `mobile/src/lib/invoice.js` (lectura de campos), `mobile/src
 **De dónde salen los datos:** la app tiene una capa de datos intercambiable (`mobile/src/data/`).
 Hoy usa **Supabase**; se elige con `VITE_DATA_PROVIDER` en `mobile/.env` (`supabase` o `api`).
 
-## Arranque rápido
-
-Requisitos: Node.js 20+ y, para el APK, Android Studio.
-
-```powershell
-cd mobile
-npm install
-copy .env.example .env    # completar VITE_DATA_PROVIDER=supabase, VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
-npm run dev               # http://localhost:5173
-```
-
-### Generar el APK
-
-```powershell
-cd mobile
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-npm run android:apk
-```
-
-El APK queda en **`mobile/android/app/build/outputs/apk/debug/olocation.apk`**. Para instalarlo,
-pasarlo al teléfono y permitir "instalar apps de origen desconocido". Requiere Android 7.0 o
-superior.
-
-Cada cambio en `mobile/src/` o en `mobile/.env` necesita un APK nuevo.
-
 ## Más información
 
 - App, requisitos de Android, ícono y notas (GPS, respaldo, mapa): [`mobile/README.md`](mobile/README.md)
