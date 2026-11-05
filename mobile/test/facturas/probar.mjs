@@ -5,7 +5,14 @@
 //   --planas  usa las facturas planas de facturas-ejemplo/planas (generadas con generar_planas.py)
 import { readFileSync } from "node:fs";
 import { createWorker } from "tesseract.js";
-import { invoiceMissing, invoiceProblems, parseInvoice, problemMessage } from "../../src/lib/invoice.js";
+import {
+  doubtMessage,
+  invoiceDoubts,
+  invoiceMissing,
+  invoiceProblems,
+  parseInvoice,
+  problemMessage,
+} from "../../src/lib/invoice.js";
 import { tesseractLines } from "../../src/lib/ocr-lines.js";
 
 const args = process.argv.slice(2);
@@ -48,6 +55,8 @@ for (const { file, expect } of cases) {
   // Antes de vaciar los campos faltantes (abajo): el motivo depende de lo que se leyó.
   const reasons = invoiceProblems(got);
   const reasonKeys = reasons.map((p) => `${p.field}/${p.reason}`);
+  const doubts = invoiceDoubts(got);
+  const doubtKeys = doubts.map((d) => `${d.field}/${d.reason}`);
   const missing = invoiceMissing(got);
   got.ok = !missing.length;
   // Un campo que el mensaje da por no leído no se registra: lo que haya quedado ahí no cuenta.
@@ -84,6 +93,15 @@ for (const { file, expect } of cases) {
       text: `el motivo es [${reasonKeys}], se esperaba [${expect.problems}]`,
     });
   }
+  // Lecturas dudosas (invoiceDoubts): preguntar de más solo molesta; no preguntar cuando se leyó
+  // basura la deja registrar, salvo que igual se haya bloqueado por otro problema.
+  const wantDoubts = expect.doubts || [];
+  const extraDoubts = doubtKeys.filter((d) => !wantDoubts.includes(d));
+  const lostDoubts = wantDoubts.filter((d) => !doubtKeys.includes(d));
+  if (extraDoubts.length) problems.push({ unread: true, text: `pregunta de más: [${extraDoubts}]` });
+  if (lostDoubts.length) {
+    problems.push({ unread: reasons.length > 0, text: `no pregunta por [${lostDoubts}]` });
+  }
   // Lo más importante: si la factura se da por bien leída, el código tiene que ser el correcto.
   const realCode = [expect.code].flat().find(Boolean);
   if (got.ok && realCode && got.code !== realCode) {
@@ -100,6 +118,7 @@ for (const { file, expect } of cases) {
     const extra = p.raw ? ` (se leyó ${JSON.stringify(p.raw)})` : "";
     console.log(`       aviso: ${problemMessage(p).title} [${p.field}/${p.reason}]${extra}`);
   }
+  for (const d of doubts) console.log(`       pregunta: ${doubtMessage(d).label} ${JSON.stringify(d.value)} [${d.field}/${d.reason}]`);
   for (const p of problems) console.log(`       ${p.unread ? "·" : "✗"} ${p.text}`);
 }
 await worker.terminate();

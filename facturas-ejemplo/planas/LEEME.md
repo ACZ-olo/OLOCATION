@@ -2,8 +2,9 @@
 
 Generadas con `mobile/test/facturas/generar_planas.py` (datos inventados, mismo formato que
 `muestra_plana.png`). Escanearlas en orden: la 20 y la 21 repiten clientes de la 03 y la 06.
-De la 22 en adelante la app no registra nada y muestra un aviso con el título indicado (si hay
-dos problemas, los dos).
+De la 22 a la 38 la app no registra nada y muestra un aviso con el título indicado (si hay
+dos problemas, los dos). De la 39 en adelante la lectura es dudosa: la app muestra lo que leyó
+y pregunta si es lo que dice la factura.
 
 | Archivo | Código | Nombre | Observaciones | Qué debe pasar |
 |---|---|---|---|---|
@@ -45,3 +46,6 @@ dos problemas, los dos).
 | 36_error_no_es_factura.png | — | — | — | Aviso: “No se encontró la factura en la foto”. No registra. (Una carta del proveedor (sin recuadro del cliente).) |
 | 37_error_codigo_8_y_sin_direccion.png | 02011587 | FERRETERIA NARANJO CENTRO S.A | Cargado de FR - OC 62903 | Aviso: “El formato del código está mal” · “No hay dirección”. No registra. (Código de 8 números y DIRECCION vacía.) |
 | 38_error_sin_nombre_y_direccion_incompleta.png | 040904486 | (no aparece) | Sin observaciones | Aviso: “No se encontró el nombre” · “La dirección está incompleta”. No registra. (Sin NOMBRE y dirección de una sola palabra (HEREDIA).) |
+| 39_duda_nombre_tachado_palabra_real.png | 021202657 | CONSTRUCENTRO SARCHI LTDA | PAGO CONTRA ENTREGA, SOLO EFECTIVO O SINPE | Pregunta: “Revisá el nombre” con lo que se leyó. “Sí, está bien” registra; “Tomar otra foto” no. (Nombre tachado que el OCR lee como una palabra que existe (ARMENIA).) |
+| 40_duda_direccion_tachada.png | 030502219 | MATERIALES DE CONSTRUCCION TURRIALBA LTDA | Sin observaciones | Pregunta: “Revisá la dirección” con lo que se leyó. “Sí, está bien” registra; “Tomar otra foto” no. (Dirección tachada: se lee algo, pero no empieza con la provincia.) |
+| 41_duda_persona_fisica.png | 011504872 | JUAN CARLOS MORA RODRIGUEZ | ENTREGAR EN LA CASA, PORTON BLANCO | Pregunta: “Revisá el nombre” con lo que se leyó. “Sí, está bien” registra; “Tomar otra foto” no. (Cliente persona física (sin S.A ni LTDA): se confirma y registra.) |

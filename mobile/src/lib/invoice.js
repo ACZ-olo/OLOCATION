@@ -449,6 +449,83 @@ export function problemMessage(p) {
   }
 }
 
+// --- Lecturas dudosas -------------------------------------------------------------------------
+// Un tachón o una mancha encima del texto puede hacer que el OCR "lea" palabras que existen pero
+// no son las de la factura ("ARMENIA", "ENANOS NATA"). Solo con el texto no se puede asegurar, así
+// que no se bloquea: se le muestra al transportista lo que se leyó para que confirme.
+
+const PROVINCES = ["SAN JOSE", "ALAJUELA", "CARTAGO", "HEREDIA", "GUANACASTE", "PUNTARENAS", "LIMON"];
+// Tipo de sociedad al final del nombre: "S.A", "SA", "S. A.", "LTDA", "S.R.L"… El OCR suele leer
+// la S como 5 o $ ("5A", "$. A") y pegar LTDA a la palabra de antes ("SARCHILTDA").
+const COMPANY =
+  /((^|[\s.,])[S5$][\s.,]{0,2}A|LTDA|LIMITADA|(^|[\s.,])[S5$][\s.,]{0,2}R[\s.,]{0,2}L|SOCIEDAD ANONIMA|(^|\s)CIA|(^|\s)E[\s.,]{0,2}I[\s.,]{0,2}R[\s.,]{0,2}L)[\s.,]*$/;
+
+const bare = (s) => String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
+
+/** Distancia de edición (para tolerar una letra mal leída en la provincia). */
+function editDistance(a, b) {
+  const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+    }
+  }
+  return row[b.length];
+}
+
+/** true si la dirección empieza con una provincia ("ALAJUELA, SAN CARLOS, …"), con una letra de error. */
+function startsWithProvince(address) {
+  const words = bare(address).replace(/[^A-Z\s]/g, " ").split(/\s+/).filter(Boolean);
+  return PROVINCES.some((p) => {
+    const start = words.slice(0, p.split(" ").length).join(" ");
+    return editDistance(start, p) <= (p.length >= 8 ? 2 : 1);
+  });
+}
+
+/** Palabra que no parece español: W, Q sin U, tres letras iguales seguidas o 5 consonantes seguidas. */
+const strangeWord = (w) => /W|Q(?!U)|(\p{L})\1\1|[^AEIOUY\s]{5}/u.test(bare(w).replace(/[^A-Z]/g, ""));
+
+/**
+ * Datos que se leyeron pero podrían estar mal leídos (solo los que no tienen un problema de
+ * invoiceProblems). Cada uno es { field: "name" | "address", value, reason }:
+ *   name     reason "noCompany" (no termina en S.A, LTDA…) o "strange" (palabras raras)
+ *   address  reason "noProvince" (no empieza con la provincia) o "strange"
+ * Se le pregunta al transportista si es lo que dice la factura (ver doubtMessage).
+ */
+export function invoiceDoubts(invoice) {
+  const bad = new Set(invoiceProblems(invoice).map((p) => p.field));
+  if (bad.has("invoice")) return [];
+  const doubts = [];
+  const name = clean(invoice.name);
+  if (!bad.has("name") && name) {
+    const words = name.split(" ").filter((w) => !/[\d.]/.test(w));
+    const reason = words.some(strangeWord) ? "strange" : COMPANY.test(bare(name)) ? "" : "noCompany";
+    if (reason) doubts.push({ field: "name", value: name, reason });
+  }
+  const address = clean(invoice.address);
+  if (!bad.has("address") && address) {
+    const reason = !startsWithProvince(address)
+      ? "noProvince"
+      : address.split(/[\s,]+/).some((w) => w.length >= 4 && strangeWord(w)) ? "strange" : "";
+    if (reason) doubts.push({ field: "address", value: address, reason });
+  }
+  return doubts;
+}
+
+/** { label, why } para mostrar una lectura dudosa. */
+export function doubtMessage(d) {
+  const why = {
+    noCompany: "No termina en S.A, LTDA u otro tipo de sociedad.",
+    noProvince: "No empieza con la provincia (San José, Alajuela, Cartago…).",
+    strange: "Tiene palabras que no parecen bien leídas.",
+  }[d.reason];
+  return { label: d.field === "name" ? "Nombre" : "Dirección", why };
+}
+
 /**
  * Campos obligatorios que no se pudieron leer bien, en el orden de la factura:
  * [] si está todo bien, o algunos de "código", "nombre", "dirección" (ver invoiceProblems).

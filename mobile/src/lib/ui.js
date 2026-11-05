@@ -66,12 +66,14 @@ const DIALOG_CLOSE_MS = 150;
  * `body` es HTML ya escapado. Al cerrarse, el foco vuelve a donde estaba.
  * - role: "alertdialog" (pide confirmar algo) o "dialog" (formulario).
  * - destructive: el botón de aceptar se pinta de rojo y el foco arranca en "Cancelar".
+ * - extra: texto de un tercer botón (entre los dos); si se toca, la promesa da "extra".
  */
 export function confirmDialog({
   title,
   body,
   accept = "Aceptar",
   cancel = "Cancelar",
+  extra = "",
   role = "alertdialog",
   destructive = false,
 }) {
@@ -85,6 +87,8 @@ export function confirmDialog({
   $("dialogAccept").textContent = accept;
   $("dialogAccept").classList.toggle("destructive", destructive);
   $("dialogCancel").textContent = cancel;
+  $("dialogExtra").textContent = extra;
+  $("dialogExtra").hidden = !extra;
   const wasHidden = dialog.hidden;
   dialog.hidden = false;
   if (wasHidden) {
@@ -114,6 +118,7 @@ export function closeDialog() {
 export function initDialog() {
   $("dialogAccept").addEventListener("click", () => openDialog?.(true));
   $("dialogCancel").addEventListener("click", () => openDialog?.(false));
+  $("dialogExtra").addEventListener("click", () => openDialog?.("extra"));
   $("dialog").addEventListener("click", (e) => {
     if (e.target === $("dialog")) openDialog?.(false);
   });

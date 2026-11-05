@@ -10,7 +10,7 @@
 import { analyzeInvoice, registerInvoiceStore } from "../data/index.js";
 import { getToken, isAdmin } from "../lib/access.js";
 import { escapeHtml, formatCoords, formatRelative, normalize } from "../lib/format.js";
-import { invoiceProblems, parseInvoice, problemMessage } from "../lib/invoice.js";
+import { doubtMessage, invoiceDoubts, invoiceProblems, parseInvoice, problemMessage } from "../lib/invoice.js";
 import { withNotesLocation } from "../lib/invoice-ai.js";
 import { matchInvoice } from "../lib/match.js";
 import { scanInvoiceText } from "../lib/ocr.js";
@@ -270,6 +270,29 @@ function askRetake(problems) {
   });
 }
 
+/**
+ * Algo se leyó pero puede estar mal leído (ver invoiceDoubts): se muestra para que el
+ * transportista lo compare con la factura. Devuelve "ok" (registrar), "retake" o "cancel".
+ */
+async function askDoubts(doubts) {
+  const rows = doubts
+    .map((d) => {
+      const m = doubtMessage(d);
+      return `<dt>${m.label}</dt><dd><strong>${escapeHtml(d.value)}</strong><span>${escapeHtml(m.why)}</span></dd>`;
+    })
+    .join("");
+  const single = doubts.length === 1;
+  const answer = await confirmDialog({
+    title: single ? `Revisá ${doubts[0].field === "name" ? "el nombre" : "la dirección"}` : "Revisá los datos leídos",
+    body:
+      `<p>Puede que la foto no se haya leído bien. ¿Esto es lo que dice la factura?</p>` +
+      `<dl class="scan-doubts">${rows}</dl>`,
+    accept: "Sí, está bien",
+    extra: "Tomar otra foto",
+  });
+  return answer === true ? "ok" : answer === "extra" ? "retake" : "cancel";
+}
+
 /** "Se completó con esta factura: Ubicación - Observaciones." */
 const FILLED_LABEL = { notes: "Observaciones", notesLocation: "Ubicación - Observaciones" };
 function filledText(filled) {
@@ -303,13 +326,21 @@ function showScan(fields) {
   $("scanPanel").querySelector("details").open = false;
 }
 
-/** Escaneo desde el registro viejo (admin): coincidencias como siempre + registro nuevo. */
+/**
+ * Escaneo desde el registro viejo (admin): coincidencias como siempre + registro nuevo.
+ * Devuelve true si hay que volver a tomar la foto.
+ */
 async function scanFromStores(invoice) {
   const matches = matchInvoice(invoice, state.stores);
   let registered;
   const problems = invoiceProblems(invoice);
+  const doubts = problems.length ? [] : invoiceDoubts(invoice);
+  const answer = doubts.length ? await askDoubts(doubts) : "ok";
+  if (answer === "retake") return true;
   if (problems.length) {
     registered = { text: `No se guardó en el registro nuevo. ${problemsText(problems)}`, tone: "warn" };
+  } else if (answer === "cancel") {
+    registered = { text: "No se guardó en el registro nuevo: los datos leídos no se confirmaron.", tone: "warn" };
   } else {
     const result = await registerFromInvoice(invoice);
     registered = !result
@@ -320,7 +351,7 @@ async function scanFromStores(invoice) {
           ? { text: `Este cliente ya estaba en el registro nuevo. ${filledText(result.filled)}`, tone: "ok" }
           : { text: "Este cliente ya estaba en el registro nuevo.", tone: "" };
   }
-  if (module !== "stores") return; // cambió de pestaña mientras se registraba
+  if (module !== "stores") return false; // cambió de pestaña mientras se registraba
   showScan({
     module: "stores",
     ids: matches.map((m) => m.store.id),
@@ -329,6 +360,7 @@ async function scanFromStores(invoice) {
     invoice,
     registered,
   });
+  return false;
 }
 
 /**
@@ -341,6 +373,14 @@ async function scanFromInvoice(invoice) {
   if (problems.length) {
     if (scan) closeScan(); // que no quede a la vista la tienda del escaneo anterior
     return askRetake(problems);
+  }
+  const doubts = invoiceDoubts(invoice);
+  if (doubts.length) {
+    const answer = await askDoubts(doubts);
+    if (answer !== "ok") {
+      if (scan) closeScan();
+      return answer === "retake";
+    }
   }
   const result = await registerFromInvoice(invoice);
   if (!result) return false;
@@ -385,7 +425,7 @@ async function scanInvoice() {
     const invoice = await withNotesLocation(read, (input) => analyzeInvoice(getToken(), input));
     if (invoice.ai === "error") console.warn("Análisis con IA no disponible: se siguió sin la IA.");
     if (module === "invoice") retake = await scanFromInvoice(invoice);
-    else await scanFromStores(invoice);
+    else retake = await scanFromStores(invoice);
   } catch (e) {
     if (!(e instanceof PhotoError)) throw e;
     if (e.code !== "CANCELLED") toast(e.message || "No se pudo leer la factura.", "error");

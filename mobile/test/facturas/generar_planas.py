@@ -218,6 +218,23 @@ CASES = [
     dict(id="38_error_sin_nombre_y_direccion_incompleta", code="040904486", name="",
          address="HEREDIA", hide=["name"], notes=[], problems=["name/notFound", "address/incomplete"],
          expect="Sin NOMBRE y dirección de una sola palabra (HEREDIA)."),
+    # Lecturas dudosas: se leyó algo, pero puede no ser lo de la factura. La app lo muestra y
+    # pregunta "¿Esto es lo que dice la factura?" (Sí, está bien / Tomar otra foto).
+    # doubts: lo que tiene que dar invoiceDoubts; seed: fija los datos al azar (y el tachón) para
+    # que el OCR dé siempre la misma lectura.
+    dict(id="39_duda_nombre_tachado_palabra_real", code="021202657", name="CONSTRUCENTRO SARCHI LTDA",
+         address="ALAJUELA, SARCHI, SARCHI NORTE 200 M OESTE DE LA CARRETA MONUMENTAL, ND",
+         scribble=["name"], seed=112, terms="CONTADO", notes=["PAGO CONTRA ENTREGA, SOLO EFECTIVO O SINPE"],
+         doubts=["name/noCompany"],
+         expect="Nombre tachado que el OCR lee como una palabra que existe (ARMENIA)."),
+    dict(id="40_duda_direccion_tachada", code="030502219", name="MATERIALES DE CONSTRUCCION TURRIALBA LTDA",
+         address="CARTAGO, TURRIALBA, TURRIALBA BARRIO EL CARMEN 200 M ESTE DEL BANCO POPULAR, ND",
+         scribble=["address"], seed=105, terms="CONTADO", notes=[], doubts=["address/noProvince"],
+         expect="Dirección tachada: se lee algo, pero no empieza con la provincia."),
+    dict(id="41_duda_persona_fisica", code="011504872", name="JUAN CARLOS MORA RODRIGUEZ",
+         address="SAN JOSE, MORAVIA, SAN VICENTE 100 M NORTE DEL COLEGIO, ND",
+         notes=["ENTREGAR EN LA CASA, PORTON BLANCO"], doubts=["name/noCompany"],
+         expect="Cliente persona física (sin S.A ni LTDA): se confirma y registra."),
 ]
 
 # Título del aviso de cada problema (igual que problemMessage en src/lib/invoice.js).
@@ -238,6 +255,13 @@ def title(problem):
     if problem in TITLES:
         return TITLES[problem]
     return f"No se encontró {FIELD_NAME[field]}" if reason == "notFound" else f"No se logró leer {FIELD_NAME[field]}"
+
+def doubt_title(doubts):
+    """Título de la pregunta por lecturas dudosas (igual que askDoubts en src/screens/stores.js)."""
+    if len(doubts) > 1:
+        return "Revisá los datos leídos"
+    return "Revisá el nombre" if doubts[0].startswith("name/") else "Revisá la dirección"
+
 
 ZONES = ["Z101", "Z118", "Z204", "Z215", "Z307", "Z322", "Z410", "Z503", "Z516", "Z602", "Z611", "Z705"]
 TERM_DAYS = {"45 DIAS": 45, "30 DIAS": 30, "CONTADO": 0}
@@ -288,6 +312,7 @@ def build(case, i):
         return Image.new("RGB", (W, H), (250, 250, 248)), None
     if case.get("kind") == "letter":
         return draw_letter(), None
+    i = case.get("seed", i)
     rnd = random.Random(500 + i)
     day = date(2026, 10, 1) + timedelta(days=rnd.randint(0, 33))
     terms = case.get("terms", "45 DIAS")
@@ -339,11 +364,19 @@ def main():
         if missing:
             expect["missing"] = missing
         expect["problems"] = problems
+        doubts = case.get("doubts", [])
+        expect["doubts"] = doubts
+        for f in case.get("scribble", ()):  # lo que el OCR lea debajo del tachón no se exige
+            if f not in bad:
+                expect[f] = None
         cases.append(dict(file=f"{case['id']}.png", expect=expect))
         what = case.get("expect", "")
         if problems:
             what = ("Aviso: " + " · ".join(f"“{title(p)}”" for p in problems) + ". No registra."
                     + (f" ({what})" if what else ""))
+        elif doubts:
+            what = ("Pregunta: “" + doubt_title(doubts) + "” con lo que se leyó. "
+                    "“Sí, está bien” registra; “Tomar otra foto” no." + (f" ({what})" if what else ""))
         shown = lambda f, empty: "—" if kind else ("(no aparece)" if f in case.get("hide", ()) else
                                                    case[f] or empty)
         rows.append(f"| {case['id']}.png | {shown('code', '(vacío)')} | {shown('name', '(vacío)')} | "
@@ -352,8 +385,9 @@ def main():
         "# Facturas planas de prueba\n\n"
         "Generadas con `mobile/test/facturas/generar_planas.py` (datos inventados, mismo formato que\n"
         "`muestra_plana.png`). Escanearlas en orden: la 20 y la 21 repiten clientes de la 03 y la 06.\n"
-        "De la 22 en adelante la app no registra nada y muestra un aviso con el título indicado (si hay\n"
-        "dos problemas, los dos).\n\n"
+        "De la 22 a la 38 la app no registra nada y muestra un aviso con el título indicado (si hay\n"
+        "dos problemas, los dos). De la 39 en adelante la lectura es dudosa: la app muestra lo que leyó\n"
+        "y pregunta si es lo que dice la factura.\n\n"
         "| Archivo | Código | Nombre | Observaciones | Qué debe pasar |\n|---|---|---|---|---|\n"
         + "\n".join(rows) + "\n",
         encoding="utf-8",
